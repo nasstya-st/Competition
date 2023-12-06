@@ -52,7 +52,8 @@ def generate_launch_description():
         output='both',
         parameters=[
             {'robot_description': robot_desc},
-            {'frame_prefix': "robot/"}
+            {'frame_prefix': "robot/"},
+            {"use_sim_time": True,}
         ]
     )
 
@@ -71,6 +72,7 @@ def generate_launch_description():
         parameters=[{
             'config_file': os.path.join(pkg_project_bringup, 'config', 'robot_bridge.yaml'),
             'qos_overrides./tf_static.publisher.durability': 'transient_local',
+            "use_sim_time": True,
         }],
         output='screen'
     )
@@ -96,7 +98,7 @@ def generate_launch_description():
         robot_state_publisher,
         rviz,
         TimerAction(
-            period=5.0,
+            period=0.0,
             actions=[create]),
         starter,
         included_launch,
