@@ -98,7 +98,7 @@ def generate_launch_description():
         robot_state_publisher,
         rviz,
         TimerAction(
-            period=0.0,
+            period=5.0,
             actions=[create]),
         starter,
         included_launch,

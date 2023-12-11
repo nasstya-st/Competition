@@ -43,7 +43,6 @@ class CirclePublisher(Node):
         
     def image_callback(self, msg):
         cv_bridge = CvBridge()
-        frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         gray = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         b1 = 232
         g1 = 0
@@ -53,19 +52,19 @@ class CirclePublisher(Node):
         r2 = 255
         h_min = (g1, b1, r1)
         h_max = (g2, b2, r2)
-        #gray = gray + 150 - np.mean(gray)
+
         gray = cv2.inRange(gray, h_min, h_max)
         
         dst = gray[int(gray.shape[0]/3*2):, :]
+        
         cv2.imshow("dst", dst)
         cv2.waitKey(1)
+        
         dst = np.array(dst, dtype=np.int8)
         
         cnt, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
 
         if cnt > 1:
-
-            #self.get_logger().info("Goal Reached!! ")
             mindistance1 = []
             mindistance2 = []
             for i in range(1, cnt):
@@ -75,37 +74,24 @@ class CirclePublisher(Node):
                 mindistance2.append(ptdistance[1])
 
             threshdistance = [min(mindistance1), min(mindistance2)]
-
             minlb = [mindistance1.index(min(mindistance1)), mindistance2.index(min(mindistance2))]
-
             cpt = [centroids[minlb[0] + 1], centroids[minlb[1] + 1]]
 
             if threshdistance[0] > 50:
                 cpt[0] = self.prevpt1
             if threshdistance[1] > 50:
                 cpt[1] = self.prevpt2
-
-            #self.get_logger().info(f'{self.error[-1]} ')
-            #mindistance1.clear()
-            #mindistance2.clear()
+                
         else:
-
             cpt = [self.prevpt1, self.prevpt2]
 
         self.prevpt1 = cpt[0]
         self.prevpt2 = cpt[1]
 
         fpt = [(cpt[0][0] + cpt[1][0]) / 2, (cpt[0][1] + cpt[1][1]) / 2 + gray.shape[0] / 3 * 2]
-        '''
-        dst = cv2.cvtColor(dst, cv2.COLOR_GRAY2BGR)
 
-        cv2.circle(frame, tuple(map(int, fpt)), 2, (0, 0, 255), 2)
-        cv2.circle(dst, tuple(map(int, cpt[0])), 2, (0, 0, 255), 2)
-        cv2.circle(dst, tuple(map(int, cpt[1])), 2, (255, 0, 0), 2)'''
-        cv2.imshow("gray", gray)
-        cv2.waitKey(1)
         self.error.append(dst.shape[1] / 2 - fpt[0])
-        #self.get_logger().info(f'{self.error[-1]}')
+
         
         
 def main(args=None):
