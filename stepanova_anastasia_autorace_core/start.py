@@ -42,9 +42,8 @@ class Starter(Node):
         cv_bridge = CvBridge()
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         if not self.is_started:
-            #print(frame[300, 700][1])
-            if frame[300, 700][1]==110: self.is_started = 1
-            return
+            if frame[300, 600][1]==109: self.is_started = 1
+
 
     def timer_callback(self):
         if not self.is_started: return
@@ -68,7 +67,7 @@ class Starter(Node):
         cv_bridge = CvBridge()
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         rec_signs = recognition(frame, *self.lab_data)
-        self.get_logger().info(f'{rec_signs}')
+        #self.get_logger().info(f'{rec_signs}')
         
     def image_callback(self, msg):
         if not self.is_started: return
