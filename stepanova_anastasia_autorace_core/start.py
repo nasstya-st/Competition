@@ -22,6 +22,8 @@ class Starter(Node):
          	    self.image_callback, 1) 	    
         self.starter = self.create_subscription(Image, "/color/image",
          	    self.traffic_light_callback, 1) 
+        self.recognizer = self.create_subscription(Image, "/color/image",
+         	    self.recognizer_callback, 1) 
          	    
         self.timer_period = 0.2
         self.error = [0,0]
@@ -31,6 +33,7 @@ class Starter(Node):
         self.curr_time = 0
         
         self.lab_data = lab()
+        #self.get_logger.info(f'{self.lab_data[-1]}')
         
         self.is_started = 0
         
@@ -61,14 +64,20 @@ class Starter(Node):
     def listener_callback(self, msg):
         self.is_started = 1
         
+    def recognizer_callback(self, msg):
+        cv_bridge = CvBridge()
+        frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        rec_signs = recognition(frame, *self.lab_data)
+        self.get_logger().info(f'{rec_signs}')
+        
     def image_callback(self, msg):
         if not self.is_started: return
         
         cv_bridge = CvBridge()
         gray = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
-        rec_signs = recognition(gray, *self.lab_data)
-        self.get_logger().info(f'{rec_signs}')
+        #rec_signs = recognition(gray, *self.lab_data)
+        #self.get_logger().info(f'{rec_signs}')
         
         b1 = 232
         g1 = 0

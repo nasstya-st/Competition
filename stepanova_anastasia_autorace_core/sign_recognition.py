@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import os.path 
+from ament_index_python.packages import get_package_share_directory
+
 def object_Finder(desclist, background, matcher, orb, tmpbackground, min_area=20000, max_area= 50000): # add a parameter for minimum area
     temp = []
     list_of_sign = []
@@ -37,13 +39,17 @@ def lab():
     orb = cv2.ORB_create()
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     desclist = []
-    path = os.path.abspath('signes')
+
+    pkg = get_package_share_directory('stepanova_anastasia_autorace_core')
     
     for sign in signs:
-        full_path =path + '/' + sign + '.png'
-        sign_img = cv2.imread(full_path)
+        full_path =  os.path.join(pkg, 'signes', str(sign) + '.png')
+        gsign = cv2.imread(full_path, cv2.IMREAD_GRAYSCALE)
+       
+        #cv2.imshow('sign', gsign)
+        #cv2.waitKey(0)
 
-        gsign = cv2.cvtColor(sign_img, cv2.COLOR_BGR2GRAY)
+        #gsign = cv2.cvtColor(sign_img, cv2.COLOR_BGR2GRAY)
         
         kp, desc = orb.detectAndCompute(gsign, None)
         desclist.append([kp, desc, gsign, sign]) # add the name of the sign to the list

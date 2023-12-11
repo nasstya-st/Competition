@@ -22,6 +22,7 @@ setup(
         (os.path.join('share', package_name1, 'config'), glob(os.path.join('config', '*.yaml'))),
         (os.path.join('share', package_name1, 'config'), glob(os.path.join('config', '*.rviz'))),
         (os.path.join('share', package_name1, 'hooks'), glob(os.path.join('hooks', '*.in'))),
+        (os.path.join('share', package_name, 'signes'), glob(os.path.join('signes', '*'))),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
