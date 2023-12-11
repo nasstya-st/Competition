@@ -61,8 +61,11 @@ def generate_launch_description():
     rviz = Node(
        package='rviz2',
        executable='rviz2',
-       arguments=['-d', os.path.join(pkg_project_bringup, 'config', 'autorace_2023.rviz')],
-       condition=IfCondition(LaunchConfiguration('rviz'))
+       arguments=['-d', os.path.join(pkg_project_bringup, 'config', 'autorace_2023.rviz'),
+                ],
+       condition=IfCondition(LaunchConfiguration('rviz')),
+       output={'both': 'log'}
+
     )
 
     # Bridge ROS topics and Gazebo messages for establishing communication

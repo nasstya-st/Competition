@@ -7,6 +7,9 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
+
+from .sign_recognition import lab, recognition
 
 class Starter(Node):
 
@@ -19,6 +22,7 @@ class Starter(Node):
          	    self.image_callback, 1) 	    
         self.starter = self.create_subscription(Image, "/color/image",
          	    self.traffic_light_callback, 1) 
+         	    
         self.timer_period = 0.2
         self.error = [0,0]
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
@@ -26,7 +30,10 @@ class Starter(Node):
         self.prevpt2 = [700,100]
         self.curr_time = 0
         
+        self.lab_data = lab()
+        
         self.is_started = 0
+        
         
     def traffic_light_callback(self, msg):
         cv_bridge = CvBridge()
@@ -45,6 +52,8 @@ class Starter(Node):
         	            0.0125 * self.error[-1] + \
                             0.000 * np.sum(np.array(self.error)*self.timer_period) + \
                             0.014 * (self.error[-1] - self.error[-2]) / self.timer_period )
+                            
+        
         #self.get_logger().info(f'{cmd_vel.angular.z}')
         self.publisher.publish(cmd_vel)
 
@@ -57,6 +66,10 @@ class Starter(Node):
         
         cv_bridge = CvBridge()
         gray = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        
+        rec_signs = recognition(gray, *self.lab_data)
+        self.get_logger().info(f'{rec_signs}')
+        
         b1 = 232
         g1 = 0
         r1 = 0

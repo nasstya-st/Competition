@@ -36,6 +36,7 @@ setup(
         'starting_alt = stepanova_anastasia_autorace_core.start_alt:main',
         'starting_alt2 = stepanova_anastasia_autorace_core.start_tonya:main',
         'dataset = stepanova_anastasia_autorace_core.dataset:main',
+
         ],
     },
 )
