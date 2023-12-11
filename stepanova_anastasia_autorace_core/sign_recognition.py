@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import os 
+import os
+import os.path 
 def object_Finder(desclist, background, matcher, orb, tmpbackground, min_area=20000, max_area= 50000): # add a parameter for minimum area
     temp = []
     list_of_sign = []
@@ -36,9 +37,11 @@ def lab():
     orb = cv2.ORB_create()
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     desclist = []
-
+    path = os.path.abspath('signes')
+    
     for sign in signs:
-        sign_img = cv2.imread(f'./signes/{sign}.png')
+        full_path =path + '/' + sign + '.png'
+        sign_img = cv2.imread(full_path)
 
         gsign = cv2.cvtColor(sign_img, cv2.COLOR_BGR2GRAY)
         
@@ -53,23 +56,4 @@ def recognition(img, desclist, matcher, orb):
     gback = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
     out = np.copy(background)    
     lst1, list_of_sign = object_Finder(desclist, gback, matcher, orb, out, min_area=5000)
-    return list_of_sign         
-'''
-    for filename in os.listdir('dataset'): # loop through all the files in the 'datasets' directory
-        if filename.endswith('.png'): # check if the file is an image
-            print(filename)
-            background = cv2.imread(f'dataset/{filename}')
-            gback = cv2.cvtColor(background, cv2.COLOR_BGR2GRAY)
-            out = np.copy(background)
-            lst1, list_of_sign = object_Finder(desclist, gback, matcher, orb, out, min_area=5000)
-            print(list_of_sign)
-            for el in lst1:
-                background = cv2.polylines(background, el, True, (0, 0, 255), 3)
-            background = cv2.cvtColor(background, cv2.COLOR_BGR2RGB)
-            plt.figure(figsize=(20, 12))
-            plt.imshow(background)
-            plt.show()
-'''
-
-
-
+    return list_of_sign
