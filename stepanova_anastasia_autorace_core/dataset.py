@@ -18,17 +18,7 @@ class CirclePublisher(Node):
         self.i = 0
 
     def image_callback(self, msg):
-        cv_bridge = CvBridge()
-        frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        #image = cv2.circle(frame, (700, 300), radius=9, color=(0, 0, 255), thickness=-1)
-        #cv2.imshow('traffic_light', image)
-        #print(frame[300, 700][1])
-        if frame[300, 700][1]==110: print('green')
-        #cv2.waitKey(0) 
-  
-        # closing all open windows 
-        #cv2.destroyAllWindows() 
-        '''
+        
         directory = '/home/nastya/ros2_ws/src/stepanova_anastasia_autorace_core/dataset'
         os.chdir(directory)
         cv_bridge = CvBridge()
@@ -37,7 +27,7 @@ class CirclePublisher(Node):
         new_filename = str(self.i)+'_image.png'
         cv2.imwrite(new_filename, frame)
         self.i+=1
-        time.sleep(10)'''
+        time.sleep(10)
 
 
 

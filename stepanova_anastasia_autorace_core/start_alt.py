@@ -145,6 +145,38 @@ class CirclePublisher(Node):
         # the left and right lane lines
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)  
+        
+            
+         
+        # Create the x and y values to plot on the image  
+        ploty = np.linspace(
+          0, frame_sliding_window.shape[0]-1, frame_sliding_window.shape[0])
+        left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
+        right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+   
+        # Generate an image to visualize the result
+        out_img = np.dstack((
+          frame_sliding_window, frame_sliding_window, (
+          frame_sliding_window))) * 255
+               
+        # Add color to the left line pixels and right line pixels
+        out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
+        out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [
+          0, 0, 255]
+                   
+        # Plot the figure with the sliding windows
+        figure, (ax1, ax2, ax3) = plt.subplots(3,1) # 3 rows, 1 column
+        figure.set_size_inches(10, 10)
+        figure.tight_layout(pad=3.0)
+        ax1.imshow(cv2.cvtColor(self.orig_frame, cv2.COLOR_BGR2RGB))
+        ax2.imshow(frame_sliding_window, cmap='gray')
+        ax3.imshow(out_img)
+        ax3.plot(left_fitx, ploty, color='yellow')
+        ax3.plot(right_fitx, ploty, color='yellow')
+        ax1.set_title("Original Frame")  
+        ax2.set_title("Warped Frame with Sliding Windows")
+        ax3.set_title("Detected Lane Lines with Sliding Windows")
+        plt.show()
                  
         return left_fit, right_fit
         
@@ -291,8 +323,7 @@ class CirclePublisher(Node):
         
         frame_with_lane_lines = self.overlay_lane_lines(frame, ploty, left_fitx, right_fitx)
         left_curvem, right_curvem = self.calculate_curvature(leftx, rightx, ploty, lefty, righty)          
-        
-        ###################                            
+                         
         error = self.calculate_car_position(frame, left_fit, right_fit)
         self.get_logger().info(f'{error} error')
         self.error.append()

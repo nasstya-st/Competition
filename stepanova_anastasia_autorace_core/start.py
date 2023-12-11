@@ -40,11 +40,11 @@ class CirclePublisher(Node):
         if not self.is_started: return
         self.curr_time += self.timer_period
         cmd_vel = Twist()
-        cmd_vel.linear.x = 0.1
+        cmd_vel.linear.x = 0.12
         cmd_vel.angular.z = float( \
-        	            0.005 * self.error[-1] + \
-                            (-0.000) * np.sum(np.array(self.error)*self.timer_period) + \
-                            0.003 * (self.error[-1] - self.error[-2]) / self.timer_period )
+        	            0.0025 * self.error[-1] + \
+                            0.000 * np.sum(np.array(self.error)*self.timer_period) + \
+                            0.007 * (self.error[-1] - self.error[-2]) / self.timer_period )
         #self.get_logger().info(f'{cmd_vel.angular.z}')
         self.publisher.publish(cmd_vel)
 
