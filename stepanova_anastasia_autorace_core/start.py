@@ -1,8 +1,8 @@
-import rclpy, sys
+import rclpy, sys, time
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Empty
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, LaserScan
 
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
@@ -95,7 +95,7 @@ class Starter(Node):
         self.starter = self.create_subscription(Image, "/color/image",
          	    self.traffic_light_callback, 1) 
         self.recognizer = self.create_subscription(Image, "/color/image", self.recognizer_callback, 1) 
-         	    
+        self.lidar = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 1)  	    
         #self.avoid_blocks = ActionClient(self, AvoidBlocks, 'execute_turtle_commands')
          	    
         self.timer_period = 0.2
@@ -106,7 +106,127 @@ class Starter(Node):
         #self.get_logger.info(f'{self.lab_data[-1]}')
         
         self.is_started = 0
+        self.state = 'avoid_blocks'
+        #self.lidar_data = 0
+        self.avoid_blocks_state = 1
         
+    def change_avoid_blocks_state(self, state):
+        cmd_vel = Twist()
+        cmd_vel.linear.x = 0.
+        cmd_vel.angular.z = 0.
+        self.publisher.publish(cmd_vel)
+        self.avoid_blocks_state = state
+        
+    def lidar_callback(self, msg):
+        if not self.is_started or self.state != 'avoid_blocks': return
+        data = msg.ranges
+        cmd_vel = Twist()
+        '''
+        self.get_logger().info(f'90 {data[90]}')
+        time.sleep(1)
+        self.get_logger().info(f'0 {data[0]}')
+        time.sleep(1)'''
+        self.get_logger().info(f'{self.avoid_blocks_state}')
+        #self.get_logger().info(f'0 {data[0]}')
+        
+        match self.avoid_blocks_state:
+            case 1:
+                if data[90] < 0.4:
+                    cmd_vel.linear.x = 0.3
+                    cmd_vel.angular.z = 0.
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(2)
+            case 2:
+                if data[0] > 0.8:
+                    cmd_vel.linear.x = 0.
+                    cmd_vel.angular.z = 0.5
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(3)
+            case 3:
+                if data[0] > 0.25:
+                    cmd_vel.linear.x = 0.15
+                    cmd_vel.angular.z = 0.
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(4)
+            case 4:
+                if data[270] > 0.25:
+                    cmd_vel.linear.x = 0.
+                    cmd_vel.angular.z = 0.4
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(5)    
+            case 5:
+                if data[270] < 0.25:
+                    cmd_vel.linear.x = 0.2
+                    cmd_vel.angular.z = 0.
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(6)     
+            case 6:
+                if data[0] > 0.66:
+                    cmd_vel.linear.x = 0.
+                    cmd_vel.angular.z = -0.4
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(7)      
+            case 7:
+                if data[0] > 0.3:
+                    cmd_vel.linear.x = 0.2
+                    cmd_vel.angular.z = 0.
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(8)                      
+            case 8:
+                if data[90] > 0.3:
+                    cmd_vel.linear.x = 0.
+                    cmd_vel.angular.z = -0.4
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(9)                     
+            case 9:
+                if data[90] < 0.4:
+                    cmd_vel.linear.x = 0.2
+                    cmd_vel.angular.z = 0.
+                    self.publisher.publish(cmd_vel)
+                else:                       
+                    self.change_avoid_blocks_state(10)    
+            case 10:
+                if data[180] > 0.15:
+                    cmd_vel.linear.x = 0.
+                    cmd_vel.angular.z = 0.3
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(-1)                  
+                    self.state = 'none'        
+                
+                                                                           
+        '''
+        if data[130] > 1 or data[130] == float('inf'):
+            cmd_vel.linear.x = 0.2
+            self.publisher.publish(cmd_vel)
+        else: self.lidar_state=1
+        
+        if self.lidar_state==1:
+            cmd_vel.linear.x = 0.
+            cmd_vel.angular.z = 3.14/2
+            self.publisher.publish(cmd_vel)
+            time.sleep(1)
+            cmd_vel.linear.x = 0.1
+            cmd_vel.angular.z = 0.
+            time.sleep(1)
+            self.publisher.publish(cmd_vel)
+            cmd_vel.linear.x = 0.
+            cmd_vel.angular.z = 3.14/2
+            self.publisher.publish(cmd_vel)
+            time.sleep(1)
+            cmd_vel.linear.x = 0.
+            cmd_vel.angular.z = -3.14/2
+            self.publisher.publish(cmd_vel)
+            time.sleep(1)
+            self.lidar_state=2'''
         
     def traffic_light_callback(self, msg):
         cv_bridge = CvBridge()
@@ -116,8 +236,23 @@ class Starter(Node):
 
     def timer_callback(self):
         if not self.is_started: return
-        new_vel = self.pid.update_error()
-        self.publisher.publish(new_vel)
+        match self.state:
+            case 'none':
+                new_vel = self.pid.update_error()
+                self.publisher.publish(new_vel)
+            case 'avoid_blocks':
+                pass
+                '''
+                data = self.lidar_data
+                n = len(data)
+                self.avoid_blocks()
+                #self.get_logger().info(f'{data[95]}')
+                
+                if data[92] > 1:
+                    new_vel = self.pid.update_error()
+                    self.publisher.publish(new_vel)
+                    #self.get_logger().info(f'{data[95]}')
+                else: self.avoid_blocks()'''
   
     def empty_listener_callback(self, msg):
         self.is_started = 1
@@ -125,7 +260,7 @@ class Starter(Node):
     def recognizer_callback(self, msg):
         cv_bridge = CvBridge()
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        rec_signs = recognition(frame, *self.lab_data)
+        #rec_signs = recognition(frame, *self.lab_data)
         #self.get_logger().info(f'{rec_signs}')
         
     def image_callback(self, msg):
@@ -135,10 +270,45 @@ class Starter(Node):
         image = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
         self.pid.calc_error(image)
+        #self.get_logger().info(f'calculating error')
         #rec_signs = recognition(gray, *self.lab_data)
         #self.get_logger().info(f'{rec_signs}')
         
         
+    def avoid_blocks(self):
+        data = self.lidar_data
+        n = len(data)
+        #print(data[n//2])
+        while 3:
+            self.get_logger().info(f'{data[95]}')
+            cmd_vel = Twist()
+            cmd_vel.linear.x = 0.2
+            self.publisher.publish(cmd_vel)
+
+        '''
+        while data[n//2] > 2:
+            #self.get_logger().info(f'{data[n//2]}')
+            new_vel = self.pid.update_error()
+            self.publisher.publish(new_vel)
+        self.get_logger().info(f'here0')
+        cmd_vel = Twist()
+        cmd_vel.linear.x = 0.2
+        cmd_vel.angular.z = 6.14
+        self.publisher.publish(cmd_vel)
+        time.sleep(4)
+        self.get_logger().info(f'here1')
+        cmd_vel.linear.x = 0.2
+        cmd_vel.angular.z = -6.14
+        self.publisher.publish(cmd_vel)
+        time.sleep(5)
+        self.get_logger().info(f'here2')
+        cmd_vel.linear.x = 0.2
+        cmd_vel.angular.z = 6.14
+        self.publisher.publish(cmd_vel)
+        time.sleep(6)
+        self.get_logger().info(f'here3')'''
+
+        self.state = 'none'    
         
 def main(args=None):
     rclpy.init(args=args)
