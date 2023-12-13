@@ -87,7 +87,7 @@ def generate_launch_description():
                 foo_dir + '/launch/extrinsic_camera_calibration.launch.py'))
 
     starter = Node(
-        package='autorace2023_start',
+        package='stepanova_anastasia_autorace_core',
         executable='autorace2023_start',
         name='autorace2023_start',
         parameters=[
