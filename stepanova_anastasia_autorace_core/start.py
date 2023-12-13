@@ -105,8 +105,7 @@ class Starter(Node):
         
         self.is_started = 0
         self.state = 'avoid_blocks'
-        #self.lidar_data = 0
-        self.avoid_blocks_state = 1
+        self.avoid_blocks_state = 0  # -1 before and after mission
         
     def change_avoid_blocks_state(self, state):
         cmd_vel = Twist()
@@ -118,6 +117,13 @@ class Starter(Node):
     def avoid_blocks(self, data):
     	cmd_vel = Twist()
     	match self.avoid_blocks_state:
+            case 0:
+                if data[80] > 0.3:
+                    cmd_vel.linear.x = 0.5
+                    cmd_vel.angular.z = 0.
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(2)    	
             case 1:
                 if data[80] < 0.4:
                     cmd_vel.linear.x = 0.3
