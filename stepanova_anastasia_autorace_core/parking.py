@@ -95,33 +95,34 @@ class Happy(Node):
 
             if (self.state_parking==6):
                 if self.park==1:
-                    vel_msg.angular.z = -0.9
+                    vel_msg.angular.z = -1.05
                     
                 if self.park==2:
                     vel_msg.angular.z = 1.34
                 self.velocity_publisher.publish(vel_msg)
 
-                if (laser[79]<self.d_r_l+0.4 or laser[281]<self.d_r_l):
+                if (laser[79]<self.d_r_l+0.4 or laser[281]<self.d_r_l+0.45):
                     vel_msg.angular.z = 0.0
                     self.state_parking = 7
                     self.velocity_publisher.publish(vel_msg)
                     time.sleep(3)
+                    quit()
                 
                     
 
-            if (self.state_parking == 7):
+            '''if (self.state_parking == 7):
                  k = 0
                  l = 0
                  if (self.park == 1 and  l==0):
                     vel_msg.linear.x = 0.2
                     self.velocity_publisher.publish(vel_msg)
-                    time.sleep(3)
+                    time.sleep(5)
                     l = 1   
 
-                 vel_msg.linear.x = 0.2
+                 vel_msg.linear.x = 0.15
                  self.velocity_publisher.publish(vel_msg)
-                 for i in range (30):
-                    if laser[300+i]<0.3:
+                 for i in range (45):
+                    if laser[280+i]<0.4:
                         k=1
                  if (k == 1):
                     vel_msg.linear.x  = 0.0
@@ -134,14 +135,14 @@ class Happy(Node):
                 self.velocity_publisher.publish(vel_msg)
                 
                 for i in range (35):
-                    if laser[185+i]<0.3:
+                    if laser[185+i]<0.6:
                         k=1
                 
                 
                 if (k == 1):
                     vel_msg.angular.z  = 0.0
                     self.velocity_publisher.publish(vel_msg) 
-                    quit()   
+                    quit()   '''
 
 
 

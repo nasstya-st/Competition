@@ -104,8 +104,12 @@ class Starter(Node):
         #self.get_logger.info(f'{self.lab_data[-1]}')
         
         self.is_started = 0
-        self.state = 'avoid_blocks'
-        self.avoid_blocks_state = 0  # -1 before and after mission
+        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking']
+        self.state = 'none'
+        self.avoid_blocks_state = 0  # 0 before and after mission
+        self.state_parking = 0
+        self.park = 0
+        self.d_r_l = 0
         
     def change_avoid_blocks_state(self, state):
         cmd_vel = Twist()
@@ -113,6 +117,7 @@ class Starter(Node):
         cmd_vel.angular.z = 0.
         self.publisher.publish(cmd_vel)
         self.avoid_blocks_state = state
+        
         
     def avoid_blocks(self, data):
     	cmd_vel = Twist()
@@ -195,6 +200,88 @@ class Starter(Node):
                 else:
                     self.change_avoid_blocks_state(-1)                  
                     self.state = 'none'  
+                    
+    def parking(self, ranges):
+        vel_msg = Twist()
+        laser = ranges
+        if (len(laser)!=0):
+        if(self.state_parking==0):
+            if (laser[79]<0.41 or laser[281]<0.41):
+               
+                vel_msg.linear.x = 0.0
+                self.state_parking = 1
+            else:
+
+                vel_msg.linear.x = 0.35
+                
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
+            if (self.state_parking==1):
+                if (laser[79]<0.41):
+                    self.d_r_l = laser[79]
+                    self.state_parking = 2
+                    self.park = 1
+                if (laser[281]<0.41):
+                    self.d_r_l = laser[281]
+                    self.state_parking = 3
+                    self.park = 2
+               
+                time.sleep(2)
+        if (self.state_parking==2 or self.state_parking ==3):
+            if self.state_parking==2:
+                vel_msg.angular.z = -0.4
+            if self.state_parking==3:
+                vel_msg.angular.z = 0.4
+            self.publisher.publish(vel_msg)
+           
+            if (laser[179]<0.25):
+                self.d = laser[179]
+                vel_msg.linear.x = 0.0
+                vel_msg.angular.z = 0.0
+                self.publisher.publish(vel_msg)
+                self.state_parking = 4
+            time.sleep(2)
+            
+                
+        if (self.state_parking == 4):
+            
+            vel_msg.linear.x = 0.18
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
+            
+           
+            if (laser[179]>self.d+0.15):
+                vel_msg.linear.x = 0.0
+                self.state_parking = 5
+                self.publisher.publish(vel_msg)
+                time.sleep(3)
+        if (self.state_parking==5):
+            vel_msg.linear.x = -0.14
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
+            if (laser[179]<self.d+0.05):
+                vel_msg.linear.x = 0.0
+                self.publisher.publish(vel_msg)
+                self.state_parking = 6
+                
+                time.sleep(3)
+            
+
+        if (self.state_parking==6):
+            if self.park==1:
+                vel_msg.angular.z = -1.05
+                
+            if self.park==2:
+                vel_msg.angular.z = 1.34
+            self.publisher.publish(vel_msg)
+
+            if (laser[79]<self.d_r_l+0.4 or laser[281]<self.d_r_l+0.45):
+                vel_msg.angular.z = 0.0
+                self.state_parking = 7
+                self.publisher.publish(vel_msg)
+                time.sleep(3)
+                self.state = 'none'
+                 
         
     def lidar_callback(self, msg):
         if not self.is_started : return
@@ -203,6 +290,23 @@ class Starter(Node):
         
         if self.state == 'avoid_blocks':
             self.avoid_blocks(data)
+        elif self.state == 'pedestrian':
+            left = np.array(data[:4])
+            right = np.array(data[356:])
+            center = np.concatenate((left, right), axis=None)
+            zero = np.zeros_like(center)
+            one = np.ones_like(center)
+            mask = np.where(center==float('inf'), one, zero)
+            res = np.all(mask)
+            cmd_vel = Twist()
+            if res:
+                cmd_vel.linear.x = 0.4
+                self.publisher.publish(cmd_vel)
+            else: 
+                cmd_vel.linear.x = 0.
+                self.publisher.publish(cmd_vel)
+            if data[90]<0.5:
+                self.state == 'none'
      
     def traffic_light_callback(self, msg):
         cv_bridge = CvBridge()

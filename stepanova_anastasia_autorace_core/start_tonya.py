@@ -29,9 +29,9 @@ class CirclePublisher(Node):
         cmd_vel = Twist()
         cmd_vel.linear.x = 0.1
         cmd_vel.angular.z = float( \
-                      0.0125* self.error[-1] + \
+                      0.018* self.error[-1] + \
                       0.0000 * np.sum(np.array(self.error)*self.timer_period) + \
-                      0.014* (self.error[-1] - self.error[-2]) / self.timer_period )
+                      0.017* (self.error[-1] - self.error[-2]) / self.timer_period )
         #self.get_logger().info(f'{cmd_vel.angular.z}')
         self.publisher.publish(cmd_vel)
 
