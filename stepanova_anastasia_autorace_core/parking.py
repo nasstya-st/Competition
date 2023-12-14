@@ -76,7 +76,7 @@ class Happy(Node):
                 self.velocity_publisher.publish(vel_msg)
                 
                
-                if (laser[179]>self.d+0.18):
+                if (laser[179]>self.d+0.15):
                     vel_msg.linear.x = 0.0
                     self.state_parking = 5
                     self.velocity_publisher.publish(vel_msg)
@@ -95,13 +95,13 @@ class Happy(Node):
 
             if (self.state_parking==6):
                 if self.park==1:
-                    vel_msg.angular.z = -1.0
+                    vel_msg.angular.z = -0.9
                     
                 if self.park==2:
                     vel_msg.angular.z = 1.34
                 self.velocity_publisher.publish(vel_msg)
 
-                if (laser[79]<self.d_r_l+0.35 or laser[281]<self.d_r_l):
+                if (laser[79]<self.d_r_l+0.4 or laser[281]<self.d_r_l):
                     vel_msg.angular.z = 0.0
                     self.state_parking = 7
                     self.velocity_publisher.publish(vel_msg)
@@ -121,7 +121,7 @@ class Happy(Node):
                  vel_msg.linear.x = 0.2
                  self.velocity_publisher.publish(vel_msg)
                  for i in range (30):
-                    if laser[310+i]<0.3:
+                    if laser[300+i]<0.3:
                         k=1
                  if (k == 1):
                     vel_msg.linear.x  = 0.0
@@ -129,7 +129,7 @@ class Happy(Node):
                     self.state_parking = 8
                     time.sleep(2)
             if (self.state_parking == 8):
-                vel_msg.angular.z = 1.0
+                vel_msg.angular.z = 0.8
                 k = 0
                 self.velocity_publisher.publish(vel_msg)
                 
