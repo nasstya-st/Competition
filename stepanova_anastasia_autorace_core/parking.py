@@ -14,7 +14,7 @@ class Happy(Node):
          super().__init__('happy')
 
          # Publisher which will publish to the topic '/turtle1/cmd_vel'.
-         self.velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 1)
+         self.velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 2)
          self.pose_subscriber = self.create_subscription(LaserScan, '/scan', self.update_pose, 10)
          self.scan = LaserScan()
          self.timer = self.create_timer(0.5, self.move)
@@ -38,7 +38,7 @@ class Happy(Node):
                     self.state_parking = 1
                 else:
 
-                    vel_msg.linear.x = 0.4
+                    vel_msg.linear.x = 0.35
                     
                 vel_msg.angular.z = 0.0
                 self.velocity_publisher.publish(vel_msg)
@@ -95,37 +95,53 @@ class Happy(Node):
 
             if (self.state_parking==6):
                 if self.park==1:
-                    vel_msg.angular.z = 3.14
-                    self.velocity_publisher.publish(vel_msg)
-                    time.sleep(4.25)
+                    vel_msg.angular.z = -1.0
+                    
                 if self.park==2:
-                    vel_msg.angular.z = -3.14
-                    self.velocity_publisher.publish(vel_msg)
-                    time.sleep(3.65)
-                vel_msg.angular.z = 0.0
-                self.state_parking = 7
+                    vel_msg.angular.z = 1.34
                 self.velocity_publisher.publish(vel_msg)
+
+                if (laser[79]<self.d_r_l+0.35 or laser[281]<self.d_r_l):
+                    vel_msg.angular.z = 0.0
+                    self.state_parking = 7
+                    self.velocity_publisher.publish(vel_msg)
+                    time.sleep(3)
                 
                     
 
             if (self.state_parking == 7):
-                 
-                 vel_msg.linear.x = -1.4
+                 k = 0
+                 l = 0
+                 if (self.park == 1 and  l==0):
+                    vel_msg.linear.x = 0.2
+                    self.velocity_publisher.publish(vel_msg)
+                    time.sleep(3)
+                    l = 1   
+
+                 vel_msg.linear.x = 0.2
                  self.velocity_publisher.publish(vel_msg)
-                 time.sleep(6.3)
-                 vel_msg.linear.x = 0.0
-                 vel_msg.angular.z = -3.14
-                 self.velocity_publisher.publish(vel_msg)
-                 time.sleep(4.4)
-                 vel_msg.linear.x = 5.0
-                 vel_msg.angular.z = 0.0
-                 self.velocity_publisher.publish(vel_msg)
-                 time.sleep(4)
-                 vel_msg.linear.x = 0.0
-                 vel_msg.angular.z = 0.0
-                 self.velocity_publisher.publish(vel_msg)
-                 quit()
-                    
+                 for i in range (30):
+                    if laser[310+i]<0.3:
+                        k=1
+                 if (k == 1):
+                    vel_msg.linear.x  = 0.0
+                    self.velocity_publisher.publish(vel_msg) 
+                    self.state_parking = 8
+                    time.sleep(2)
+            if (self.state_parking == 8):
+                vel_msg.angular.z = 1.0
+                k = 0
+                self.velocity_publisher.publish(vel_msg)
+                
+                for i in range (35):
+                    if laser[185+i]<0.3:
+                        k=1
+                
+                
+                if (k == 1):
+                    vel_msg.angular.z  = 0.0
+                    self.velocity_publisher.publish(vel_msg) 
+                    quit()   
 
 
 
