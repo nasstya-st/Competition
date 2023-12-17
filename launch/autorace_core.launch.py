@@ -22,6 +22,13 @@ def generate_launch_description():
         parameters=[
         ]
     )
+    recogniser = Node(
+        package='stepanova_anastasia_autorace_core',
+        executable='recognising',
+        name='recogniser',
+        parameters=[
+        ]
+    )
     
     foo_dir = get_package_share_directory('autorace_camera')
     included_launch = IncludeLaunchDescription(
@@ -30,6 +37,7 @@ def generate_launch_description():
     
     return LaunchDescription([
         starter,
+        recogniser,
         included_launch,
     ])
 

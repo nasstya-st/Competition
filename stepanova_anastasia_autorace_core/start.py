@@ -86,8 +86,8 @@ class Starter(Node):
     def __init__(self):
         super().__init__('publisher')
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 1)
-        self.subscription = self.create_subscription(Empty, "robot_start",
-         	    self.empty_listener_callback, 5)
+        self.subscription = self.create_subscription(Empty, "robot_start", self.empty_listener_callback, 5)
+        self.sign_reader = self.create_subscription(String, "signes", self.sign_reader_callback, 5)
         self.subscription = self.create_subscription(Image, "/color/image_projected_compensated",
          	    self.image_callback, 1) 	    
         self.starter = self.create_subscription(Image, "/color/image",
@@ -104,7 +104,7 @@ class Starter(Node):
         #self.get_logger.info(f'{self.lab_data[-1]}')
         
         self.is_started = 0
-        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking']
+        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking', 'intersection']
         self.state = 'none'
         self.avoid_blocks_state = 0  # 0 before and after mission
         self.state_parking = 0
@@ -317,6 +317,106 @@ class Starter(Node):
                     time.sleep(3)
                     self.state = 'none'
                  
+                 
+    def intersection(self, laser):
+        if (len(laser)!=0):
+            if (self.l_r == 'left'):
+                if(self.state_turn == 0):
+                    vel_msg.linear.x = 0.
+                    vel_msg.angular.z = -0.4
+                    tmp = 0
+                    for i in range (20):
+                        if laser[110+i]<0.3:
+                            tmp=1
+                    if tmp:
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 1
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 1):
+                    vel_msg.linear.x = 0.3
+                    vel_msg.angular.z = 1.
+                    tmp = 0
+                    for i in range (20):
+                        if laser[110+i]<0.7 and laser[110+i]>0.3:
+                            tmp=1
+                    if tmp:
+                        vel_msg.linear.x = 0.
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 2
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 2):
+                    vel_msg.linear.x = 0.2
+                    vel_msg.angular.z = 0.8
+                    tmp = 0
+                    for i in range (20):
+                        if laser[30+i]<0.9 and laser[30+i]>0.3:
+                            tmp=1
+                    if tmp:
+                        vel_msg.linear.x = 0.
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 3
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 3):
+                    vel_msg.angular.z = -0.4
+                    tmp = 0
+                    for i in range (20):
+                        if laser[160+i]<0.5:
+                            tmp=1
+                    if tmp:
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 4
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 4):
+                    self.state = 'none'
+
+            elif (self.l_r == 'right'):
+                if(self.state_turn == 0):
+                    vel_msg.linear.x = 0.
+                    vel_msg.angular.z = 0.4
+                    tmp = 0
+                    for i in range (20):
+                        if laser[250+i]<0.3:
+                            tmp=1 
+                    if tmp:
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 1
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 1):
+                    vel_msg.linear.x = 0.3
+                    vel_msg.angular.z = -1.
+                    tmp = 0
+                    for i in range (20):
+                        if laser[250+i]<0.7 and laser[250+i]>0.3:
+                            tmp=1
+                    if tmp:
+                        vel_msg.linear.x = 0.
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 2
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 2):
+                    vel_msg.linear.x = 0.2
+                    vel_msg.angular.z = -0.8
+                    tmp = 0
+                    for i in range (20):
+                        if laser[330+i]<0.9 and laser[330+i]>0.3:
+                            tmp=1
+                    if tmp:
+                        vel_msg.linear.x = 0.
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 3
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 3):
+                    vel_msg.angular.z = 0.4
+                    tmp = 0
+                    for i in range (20):
+                        if laser[200+i]<0.5:
+                            tmp=1
+                    if tmp:
+                        vel_msg.angular.z = 0.
+                        self.state_turn = 4
+                    self.velocity_publisher.publish(vel_msg)
+                if (self.state_turn == 4):
+                    self.state = 'none'
         
     def lidar_callback(self, msg):
         if not self.is_started : return
@@ -325,23 +425,28 @@ class Starter(Node):
         
         if self.state == 'avoid_blocks':
             self.avoid_blocks(data)
+        elif self.state == 'intersection':
+            self.intersection(data)
         elif self.state == 'pedestrian':
             left = np.array(data[:4])
             right = np.array(data[356:])
             center = np.concatenate((left, right), axis=None)
             zero = np.zeros_like(center)
             one = np.ones_like(center)
-            mask = np.where(center==float('inf'), one, zero)
+            mask = np.where(center>0.5, one, zero)
             res = np.all(mask)
             cmd_vel = Twist()
             if res:
-                cmd_vel.linear.x = 0.4
+                cmd_vel.linear.x = 0.2
                 self.publisher.publish(cmd_vel)
             else: 
                 cmd_vel.linear.x = 0.
                 self.publisher.publish(cmd_vel)
             if data[90]<0.5:
-                self.state == 'none'
+                cmd_vel.linear.x = 0.
+                self.publisher.publish(cmd_vel)
+                self.state = 'none'
+            #self.get_logger().info(f'{res, center, data[90]}')
      
     def traffic_light_callback(self, msg):
         cv_bridge = CvBridge()

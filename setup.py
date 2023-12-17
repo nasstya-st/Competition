@@ -39,6 +39,7 @@ setup(
         'dataset = stepanova_anastasia_autorace_core.dataset:main',
 	'autorace2023_start = stepanova_anastasia_autorace_core.parking:main',
 	'pid = stepanova_anastasia_autorace_core.start_tonya:main',
+	'recognising = stepanova_anastasia_autorace_core.recognition:main'
         ],
     },
 )
