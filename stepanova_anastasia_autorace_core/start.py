@@ -278,11 +278,18 @@ class Starter(Node):
                 self.publisher.publish(vel_msg)
                 
                
-                if (laser[179]>self.d+0.15):
-                    vel_msg.linear.x = 0.0
-                    self.state_parking = 7
-                    self.publisher.publish(vel_msg)
-                    time.sleep(3)
+                if self.park == 2:
+                    if (laser[179]>self.d+0.15):
+                        vel_msg.linear.x = 0.0
+                        self.state_parking = 7
+                        self.publisher.publish(vel_msg)
+                        time.sleep(3)
+                else:
+                    if (laser[179]>self.d+0.2):
+                        vel_msg.linear.x = 0.0
+                        self.state_parking = 7
+                        self.publisher.publish(vel_msg)
+                        time.sleep(3)
             if (self.state_parking==7):
                 vel_msg.linear.x = -0.14
                 vel_msg.angular.z = 0.0
