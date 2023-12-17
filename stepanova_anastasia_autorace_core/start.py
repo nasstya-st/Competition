@@ -218,7 +218,7 @@ class Starter(Node):
                     vel_msg.linear.x = 0.25
                     
                 vel_msg.angular.z = 0.0
-                self.velocity_publisher.publish(vel_msg)
+                self.publisher.publish(vel_msg)
                 
             if self.state_parking == 1:
                 tmp = 0
@@ -232,7 +232,7 @@ class Starter(Node):
                 else:
                     vel_msg.angular.z = 0.58
             
-                self.velocity_publisher.publish(vel_msg)
+                self.publisher.publish(vel_msg)
                 
             if(self.state_parking==2):
                 if (laser[79]<0.41 or laser[281]<0.41):
@@ -242,7 +242,7 @@ class Starter(Node):
                     vel_msg.linear.x = 0.35
                     
                 vel_msg.angular.z = 0.0
-                self.velocity_publisher.publish(vel_msg)
+                self.publisher.publish(vel_msg)
                 if (self.state_parking==3):
                     if (laser[79]<0.41):
                         self.d_r_l = laser[79]
@@ -260,36 +260,36 @@ class Starter(Node):
                     vel_msg.angular.z = -0.4
                 if self.state_parking==5:
                     vel_msg.angular.z = 0.4
-                self.velocity_publisher.publish(vel_msg)
+                self.publisher.publish(vel_msg)
                
-                if (laser[179]<0.25):
+                if (laser[179]<0.2):
                     self.d = laser[179]
                     vel_msg.linear.x = 0.0
                     vel_msg.angular.z = 0.0
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                     self.state_parking = 6
-                time.sleep(2)
+                    time.sleep(2)
                 
                     
             if (self.state_parking == 6):
                 
                 vel_msg.linear.x = 0.18
                 vel_msg.angular.z = 0.0
-                self.velocity_publisher.publish(vel_msg)
+                self.publisher.publish(vel_msg)
                 
                
                 if (laser[179]>self.d+0.15):
                     vel_msg.linear.x = 0.0
                     self.state_parking = 7
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                     time.sleep(3)
             if (self.state_parking==7):
                 vel_msg.linear.x = -0.14
                 vel_msg.angular.z = 0.0
-                self.velocity_publisher.publish(vel_msg)
+                self.publisher.publish(vel_msg)
                 if (laser[179]<self.d+0.05):
                     vel_msg.linear.x = 0.0
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                     self.state_parking = 8
                     
                     time.sleep(3)
