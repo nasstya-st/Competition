@@ -7,18 +7,18 @@ import sys
 from ament_index_python.packages import get_package_share_directory
 orb = cv2.ORB_create(1000000)
 orb1 = cv2.ORB_create(100)
-i = 0
+stages = 0
 signs = [['traffic_intersection'], ['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
 orb = cv2.ORB_create()
 orb1 = cv2.ORB_create()
 def lab():
-    global i
+    global stages
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
     desclist = []
 
     pkg = get_package_share_directory('stepanova_anastasia_autorace_core')
 
-    for sign in signs[i]:
+    for sign in signs[stages]:
         full_path =  os.path.join(pkg, 'signes', str(sign) + '.png')
         gsign = cv2.imread(full_path, cv2.IMREAD_GRAYSCALE)
        
@@ -40,9 +40,12 @@ classFound = [0, 0]
 path_list = get_package_share_directory('stepanova_anastasia_autorace_core')
 
 def update_classes():
+    global stages
     global classNames
+    global images
+    images = []
     classNames = []
-    for className in signs[i]:
+    for className in signs[stages]:
         full_path =  os.path.join(path_list, PATH_TEMPLATE, str(className) + '.png')
         currentImage = cv2.imread(full_path, 0)
         images.append(currentImage)
@@ -150,7 +153,7 @@ def getClass(matches, classIndices, threshold=10):
 
 
 def detectTrafficSignsOnDataset(img, threshold=15):
-    global i
+    global stages
     classFound = [0] * len(classNames)
     currentImage = np.copy(img)
     gray_image = cv2.cvtColor(currentImage, cv2.COLOR_BGR2GRAY)
@@ -158,9 +161,9 @@ def detectTrafficSignsOnDataset(img, threshold=15):
     classID = getClass(matchLen, classIndices, threshold)
     findedClass = 'none'
     if (classID != -1):
-        i = (i + 1) % 6
-        update_classes()
+        stages = (stages + 1) % 6
         findedClass = classNames[classID]
+        update_classes()
         classFound[classID] += 1
         cv2.putText(currentImage, f'Detected: {classNames[classID]} deb: {matchLen}', (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
         # Convert your list of points to a numpy array of type int32
