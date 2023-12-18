@@ -5,11 +5,12 @@ import os
 import os.path 
 import sys
 from ament_index_python.packages import get_package_share_directory
-
+orb = cv2.ORB_create(1000000)
+orb1 = cv2.ORB_create(100)
 i = 0
 signs = [['traffic_intersection'], ['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
-orb = cv2.ORB_create(100000000)
-orb1 = cv2.ORB_create(1000000)
+orb = cv2.ORB_create()
+orb1 = cv2.ORB_create()
 def lab():
     global i
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -31,7 +32,6 @@ def lab():
         
     return desclist, matcher, orb
     
-orb = cv2.ORB_create(100)
 
 PATH_TEMPLATE = "signes"
 images = []
@@ -42,7 +42,7 @@ path_list = get_package_share_directory('stepanova_anastasia_autorace_core')
 def update_classes():
     global classNames
     classNames = []
-    for className in signs[i%6]:
+    for className in signs[i]:
         full_path =  os.path.join(path_list, PATH_TEMPLATE, str(className) + '.png')
         currentImage = cv2.imread(full_path, 0)
         images.append(currentImage)
@@ -82,11 +82,11 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
             goods = []
             coordinates = []
             for m, n in matches:
-                if m.distance < 0.75 * n.distance and m.queryIdx < len(img_keypoint):
+                if m.distance < 0.7 * n.distance and m.queryIdx < len(img_keypoint):
                     goodMatches.append([m])
                     goods.append([m, n])
                     coordinates.append(img_keypoint[m.queryIdx].pt)            
-            if(len(goodMatches) >= 10):
+            if(len(goodMatches) >= 15):
                 # Remove matches that are far away
                 img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
                 #cv2.imshow('Matches', img3)
@@ -116,10 +116,10 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
                     else:
                         break
                     prop = np.copy(img)
-                    for g in goods:
-                        x, y = img_keypoint[g[0].queryIdx].pt
+                    #for g in goods:
+                        #x, y = img_keypoint[g[0].queryIdx].pt
                         # Now you can use these coordinates to draw a point on the image
-                        prop = cv2.circle(prop, (int(x), int(y)), 5, (0, 255, 0), -1)
+                        #prop = cv2.circle(prop, (int(x), int(y)), 5, (0, 255, 0), -1)
                     #cv2.imshow('prop', prop)
                     #cv2.waitKey(0)
                 matchListLen.append(len(goodMatches))
@@ -158,7 +158,7 @@ def detectTrafficSignsOnDataset(img, threshold=15):
     classID = getClass(matchLen, classIndices, threshold)
     findedClass = 'none'
     if (classID != -1):
-        i+=1
+        i = (i + 1) % 6
         update_classes()
         findedClass = classNames[classID]
         classFound[classID] += 1
@@ -178,6 +178,8 @@ def detectTrafficSignsOnDataset(img, threshold=15):
 
     return currentImage, findedClass
         
-def recognition(img):
-    cur_img, findedClass = detectTrafficSignsOnDataset(img, 5)
+def recognition(img, depth_image):
+    #mask = depth_image > 128
+    #img[mask] = [0, 0, 0]
+    cur_img, findedClass = detectTrafficSignsOnDataset(img, 10)
     return  cur_img, findedClass, classNames
