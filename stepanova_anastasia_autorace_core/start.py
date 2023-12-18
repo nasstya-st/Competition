@@ -259,24 +259,24 @@ class Starter(Node):
                  
     def intersection(self, laser):
         if (len(laser)!=0):
-            if (self.l_r == 'left'):
+            if (self.l_r == 'right'):
                 if(self.state_turn == 0):
                     vel_msg.linear.x = 0.
                     vel_msg.angular.z = -0.4
                     tmp = 0
-                    for i in range (20):
-                        if laser[110+i]<0.3:
+                    for i in range (10):
+                        if laser[60+i]<0.2:
                             tmp=1
                     if tmp:
                         vel_msg.angular.z = 0.
                         self.state_turn = 1
                     self.publisher.publish(vel_msg)
                 if (self.state_turn == 1):
-                    vel_msg.linear.x = 0.3
+                    vel_msg.linear.x = 0.32
                     vel_msg.angular.z = 1.
                     tmp = 0
                     for i in range (20):
-                        if laser[110+i]<0.7 and laser[110+i]>0.3:
+                        if laser[140+i]<0.7 and laser[140+i]>0.25:
                             tmp=1
                     if tmp:
                         vel_msg.linear.x = 0.
@@ -284,48 +284,36 @@ class Starter(Node):
                         self.state_turn = 2
                     self.publisher.publish(vel_msg)
                 if (self.state_turn == 2):
-                    vel_msg.linear.x = 0.2
-                    vel_msg.angular.z = 0.8
+                    vel_msg.angular.z = -0.4
                     tmp = 0
                     for i in range (20):
-                        if laser[30+i]<0.9 and laser[30+i]>0.3:
+                        if laser[190+i]<0.5:
                             tmp=1
                     if tmp:
-                        vel_msg.linear.x = 0.
                         vel_msg.angular.z = 0.
                         self.state_turn = 3
                     self.publisher.publish(vel_msg)
                 if (self.state_turn == 3):
-                    vel_msg.angular.z = -0.4
-                    tmp = 0
-                    for i in range (20):
-                        if laser[160+i]<0.5:
-                            tmp=1
-                    if tmp:
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 4
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 4):
                     self.state = 'none'
 
-            elif (self.l_r == 'right'):
+            elif (self.l_r == 'left'):
                 if(self.state_turn == 0):
                     vel_msg.linear.x = 0.
                     vel_msg.angular.z = 0.4
                     tmp = 0
-                    for i in range (20):
-                        if laser[250+i]<0.3:
+                    for i in range (10):
+                        if laser[290+i]<0.3:
                             tmp=1 
                     if tmp:
                         vel_msg.angular.z = 0.
                         self.state_turn = 1
                     self.publisher.publish(vel_msg)
                 if (self.state_turn == 1):
-                    vel_msg.linear.x = 0.3
+                    vel_msg.linear.x = 0.32
                     vel_msg.angular.z = -1.
                     tmp = 0
                     for i in range (20):
-                        if laser[250+i]<0.7 and laser[250+i]>0.3:
+                        if laser[270+i]<0.7 and laser[270+i]>0.3:
                             tmp=1
                     if tmp:
                         vel_msg.linear.x = 0.
@@ -333,28 +321,16 @@ class Starter(Node):
                         self.state_turn = 2
                     self.publisher.publish(vel_msg)
                 if (self.state_turn == 2):
-                    vel_msg.linear.x = 0.2
-                    vel_msg.angular.z = -0.8
+                    vel_msg.angular.z = 0.4
                     tmp = 0
                     for i in range (20):
-                        if laser[330+i]<0.9 and laser[330+i]>0.3:
+                        if laser[175+i]<0.5:
                             tmp=1
                     if tmp:
-                        vel_msg.linear.x = 0.
                         vel_msg.angular.z = 0.
                         self.state_turn = 3
                     self.publisher.publish(vel_msg)
                 if (self.state_turn == 3):
-                    vel_msg.angular.z = 0.4
-                    tmp = 0
-                    for i in range (20):
-                        if laser[200+i]<0.5:
-                            tmp=1
-                    if tmp:
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 4
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 4):
                     self.state = 'none'
         
     def lidar_callback(self, msg):
