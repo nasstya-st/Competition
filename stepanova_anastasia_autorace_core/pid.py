@@ -26,8 +26,34 @@ class PID():
         r2 = 255
         h_min = (g1, b1, r1)
         h_max = (g2, b2, r2)
+        
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-        gray = cv2.inRange(img, h_min, h_max)
+        # Define the lower and upper limits of what we call "white-ish"
+        sensitivity = 19
+        lower_white = np.array([0, 0, 255 - sensitivity])
+        upper_white = np.array([255, sensitivity, 255])
+
+        # Define the lower and upper limits of what we call "yellow-ish"
+        lower_yellow = np.array([20, 100, 100])
+        upper_yellow = np.array([30, 255, 255])
+
+        # Create masks for the white and yellow regions
+        mask_white = cv2.inRange(hsv, lower_white, upper_white)
+        mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+
+        # Combine the masks
+        mask = cv2.bitwise_or(mask_white, mask_yellow)
+
+        # Invert the mask
+        mask_inv = cv2.bitwise_not(mask)
+
+        # Apply the mask to the image
+        img_masked = cv2.bitwise_and(img, img, mask=mask)
+
+        # Change the color of the non-white/yellow regions to black
+        img_masked[mask_inv > 0] = [0, 0, 0]
+        gray = cv2.inRange(img_masked, h_min, h_max)
 
         # cutting image
         dst = gray[int(gray.shape[0]/3*2):, :]

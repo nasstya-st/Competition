@@ -19,7 +19,7 @@ class Recognition(Node):
         super().__init__('subscription')
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 1)
         self.sign_printer = self.create_publisher(String, '/signes', 1)
-        self.subscription = self.create_subscription(Empty, "robot_start", self.empty_listener_callback, 5)
+        self.subscription = self.create_subscription(Empty, "robot_start", self.empty_listener_callback, 1)
         self.starter = self.create_subscription(Image, "/color/image", self.traffic_light_callback, 1)
         self.recognizer = self.create_subscription(Image, "/color/image", self.recognizer_callback, 1)
         self.depth = self.create_subscription(Image, "/depth/image", self.depth_callback, 1)
@@ -41,9 +41,8 @@ class Recognition(Node):
         time_to_check = 0
         laser = self.scan.ranges
         for i in range(20):
-            if laser[5+i]<0.5:
+            if laser[5+i]<0.5 or laser[i+334]<0.5:
                 time_to_check = 1
-                self.get_logger().info(f'Sign found')
     
     def recognizer_callback(self, msg):
         if not self.is_started: 

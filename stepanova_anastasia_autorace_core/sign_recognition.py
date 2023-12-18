@@ -8,6 +8,7 @@ from ament_index_python.packages import get_package_share_directory
 orb = cv2.ORB_create(100000)
 orb1 = cv2.ORB_create(1000)
 stages = 0
+#['traffic_intersection']
 signs = [['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
 def lab():
     global stages
@@ -74,7 +75,7 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
     for i, desc in enumerate(descList):  # Add index to enumerate
         if (img_descriptor is not None):
             matches = bf.knnMatch(desc, img_descriptor, k=2)
-            img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in matches for c in sublist],None, flags=2)
+            #img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in matches for c in sublist],None, flags=2)
 
 
             #Display the image
@@ -90,7 +91,7 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
                     coordinates.append(img_keypoint[m.queryIdx].pt)            
             if(len(goodMatches) >= 10):
                 # Remove matches that are far away
-                img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
+                #img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
                 #cv2.imshow('Matches', img3)
                 #cv2.waitKey(0)
                 while(len(goodMatches) >= 1):
@@ -126,13 +127,13 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
                     #cv2.waitKey(0)
                 matchListLen.append(len(goodMatches))
                 matchList.append(goodMatches)
-                classIndices.append(i)  # Append the class index
                 global_coor.append(coordinates)
-                img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
+                #img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
                 #cv2.imshow('Matches', img3)
                 #cv2.waitKey(0)
     
             coordinates = []
+        classIndices.append(i)
     return matchList, matchListLen, global_coor, classIndices  # Return classIndices
     
 
@@ -142,7 +143,7 @@ def getClass(matches, classIndices, threshold=10):
     finalClass = -1
     if (len(matches) != 0):
         maxMatchCount = max(matches)
-        print([classNames[i] for i in classIndices])
+        #print([classNames[i] for i in classIndices])
         if maxMatchCount > threshold:
             maxMatchIndex = matches.index(maxMatchCount)
             finalClass = classIndices[maxMatchIndex]
@@ -153,6 +154,9 @@ def getClass(matches, classIndices, threshold=10):
 
 def detectTrafficSignsOnDataset(img, threshold=15):
     global stages
+    global descList
+    global keypointList
+    global images
     classFound = [0] * len(classNames)
     currentImage = np.copy(img)
     gray_image = cv2.cvtColor(currentImage, cv2.COLOR_BGR2GRAY)
@@ -162,19 +166,19 @@ def detectTrafficSignsOnDataset(img, threshold=15):
     if (classID != -1):
         stages = (stages + 1) % 6
         findedClass = classNames[classID]
-        update_classes()
         classFound[classID] += 1
         cv2.putText(currentImage, f'Detected: {classNames[classID]} deb: {matchLen}', (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
         # Convert your list of points to a numpy array of type int32
         points = np.array(coordinates[classIndices.index(classID)], dtype=np.int32)
 
         # Calculate the bounding rectangle only if there are points left after outlier removal
+        update_classes()
+        descList, keypointList = createDesc(images)
         if points.size > 0:
             x, y, w, h = cv2.boundingRect(points)
 
             # Draw the rectangle on your image
             cv2.rectangle(currentImage, (x, y), (x + w, y + h), (0, 255, 0), 2)
-
     else:
         cv2.putText(currentImage, f"Undetected deb: {matchLen}", (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1)
 
