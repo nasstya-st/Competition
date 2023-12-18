@@ -1,7 +1,7 @@
 import rclpy, sys, time
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Empty
+from std_msgs.msg import Empty, String
 from sensor_msgs.msg import Image, LaserScan
 from rclpy.executors import MultiThreadedExecutor
 from cv_bridge import CvBridge, CvBridgeError
@@ -30,8 +30,10 @@ class Recognition(Node):
         global timer
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
-       	cur_img, findedClass, names = recognition(frame, deph_image) # сделать депт имадж глобальной переменной и создать подписчика
-       	self.sign_printer.publish(str(findedClass))
+       	cur_img, findedClass, names = recognition(frame) # сделать депт имадж глобальной переменной и создать подписчика
+       	message = String()
+       	message.data = str(findedClass)
+       	self.sign_printer.publish(message)
         cv2.imshow("result", cur_img)
         cv2.waitKey(1)
         self.get_logger().info(f'found: {findedClass}')

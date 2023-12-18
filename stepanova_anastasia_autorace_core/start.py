@@ -1,7 +1,7 @@
 import rclpy, sys, time
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Empty
+from std_msgs.msg import Empty, String
 from sensor_msgs.msg import Image, LaserScan
 
 from cv_bridge import CvBridge, CvBridgeError
@@ -49,8 +49,10 @@ class Starter(Node):
         
     def sign_reader_callback(self, msg):
     	state = msg.data
-    	if state==
-    	self.state = state
+    	if state == 'intersection_left': self.l_r = 'left'
+    	elif state == 'intersection_right': self.l_r = 'right'
+    	elif state == 'traffic_intersection': self.state = 'intersection'
+    	else: self.state = state
         
     def change_avoid_blocks_state(self, state):
         cmd_vel = Twist()
@@ -378,6 +380,7 @@ class Starter(Node):
             case 'none':
                 new_vel = self.pid.update_error()
                 self.publisher.publish(new_vel)
+                #self.get_logger().info(f'in pid')
             case 'finish':
                 self.finish_publisher.publish('fredy fazbear ur ur ur ur')
                 cmd_vel = Twist()
