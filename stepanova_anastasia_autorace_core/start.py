@@ -10,76 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .sign_recognition import lab, recognition
+from .pid import PID
 
-class PID():
-    def __init__(self, timer_period):
-        self.prevpt1 = [100,100]
-        self.prevpt2 = [700,100]
-        self.timer_period = timer_period
-        self.error = [0,0]
-        self.curr_time = 0
-        
-    def calc_error(self, img):
-        b1 = 232
-        g1 = 0
-        r1 = 0
-        b2 = 255
-        g2 = 255
-        r2 = 255
-        h_min = (g1, b1, r1)
-        h_max = (g2, b2, r2)
-
-        gray = cv2.inRange(img, h_min, h_max)
-
-        dst = gray[int(gray.shape[0]/3*2):, :]
-        
-        cv2.imshow("dst", dst)
-        cv2.waitKey(1)
-        
-        dst = np.array(dst, dtype=np.int8)
-        
-        cnt, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
-
-        if cnt > 1:
-            mindistance1 = []
-            mindistance2 = []
-            for i in range(1, cnt):
-                p = centroids[i]
-                ptdistance = [abs(p[0] - self.prevpt1[0]), abs(p[0] - self.prevpt2[0])]
-                mindistance1.append(ptdistance[0])
-                mindistance2.append(ptdistance[1])
-
-            threshdistance = [min(mindistance1), min(mindistance2)]
-            minlb = [mindistance1.index(min(mindistance1)), mindistance2.index(min(mindistance2))]
-            cpt = [centroids[minlb[0] + 1], centroids[minlb[1] + 1]]
-
-            if threshdistance[0] > 50:
-                cpt[0] = self.prevpt1
-            if threshdistance[1] > 50:
-                cpt[1] = self.prevpt2
-
-        else:
-            cpt = [self.prevpt1, self.prevpt2]
-
-        self.prevpt1 = cpt[0]
-        self.prevpt2 = cpt[1]
-
-        fpt = [(cpt[0][0] + cpt[1][0]) / 2, (cpt[0][1] + cpt[1][1]) / 2 + gray.shape[0] / 3 * 2]
-        
-        self.error.append(dst.shape[1] / 2 - fpt[0])
-    	
-        
-    def update_error(self):
-        self.curr_time += self.timer_period
-        Kp, Ki, Kd = (0.018, 0.0, 0.017)
-        cmd_vel = Twist()
-        cmd_vel.linear.x = 0.15
-        cmd_vel.angular.z = float( \
-        	            Kp * self.error[-1] + \
-                            Ki * np.sum(np.array(self.error)*self.timer_period) + \
-                            Kd * (self.error[-1] - self.error[-2]) / self.timer_period )
-        return cmd_vel
-        
 
 class Starter(Node):
 
@@ -87,7 +19,7 @@ class Starter(Node):
         super().__init__('publisher')
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 1)
         self.subscription = self.create_subscription(Empty, "robot_start", self.empty_listener_callback, 5)
-        self.sign_reader = self.create_subscription(String, "signes", self.sign_reader_callback, 5)
+        self.sign_reader = self.create_subscription(String, "signes", self.sign_reader_callback, 1)
         self.subscription = self.create_subscription(Image, "/color/image_projected_compensated",
          	    self.image_callback, 1) 	    
         self.starter = self.create_subscription(Image, "/color/image",
@@ -104,12 +36,19 @@ class Starter(Node):
         #self.get_logger.info(f'{self.lab_data[-1]}')
         
         self.is_started = 0
-        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking', 'intersection']
+        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking', 'intersection', 'tunnel']
         self.state = 'none'
-        self.avoid_blocks_state = 0  # 0 before and after mission
+        self.avoid_blocks_state = 0  # 0 before mission
+        self.state_turn = 0
+        self.l_r = "" # left или right, зависит от определения знака
+
         self.state_parking = 0
         self.park = 0
         self.d_r_l = 0
+        
+    def sign_reader_callback(self, msg):
+    	state = msg.data
+    	self.state = state
         
     def change_avoid_blocks_state(self, state):
         cmd_vel = Twist()
@@ -331,7 +270,7 @@ class Starter(Node):
                     if tmp:
                         vel_msg.angular.z = 0.
                         self.state_turn = 1
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 1):
                     vel_msg.linear.x = 0.3
                     vel_msg.angular.z = 1.
@@ -343,7 +282,7 @@ class Starter(Node):
                         vel_msg.linear.x = 0.
                         vel_msg.angular.z = 0.
                         self.state_turn = 2
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 2):
                     vel_msg.linear.x = 0.2
                     vel_msg.angular.z = 0.8
@@ -355,7 +294,7 @@ class Starter(Node):
                         vel_msg.linear.x = 0.
                         vel_msg.angular.z = 0.
                         self.state_turn = 3
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 3):
                     vel_msg.angular.z = -0.4
                     tmp = 0
@@ -365,7 +304,7 @@ class Starter(Node):
                     if tmp:
                         vel_msg.angular.z = 0.
                         self.state_turn = 4
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 4):
                     self.state = 'none'
 
@@ -380,7 +319,7 @@ class Starter(Node):
                     if tmp:
                         vel_msg.angular.z = 0.
                         self.state_turn = 1
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 1):
                     vel_msg.linear.x = 0.3
                     vel_msg.angular.z = -1.
@@ -392,7 +331,7 @@ class Starter(Node):
                         vel_msg.linear.x = 0.
                         vel_msg.angular.z = 0.
                         self.state_turn = 2
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 2):
                     vel_msg.linear.x = 0.2
                     vel_msg.angular.z = -0.8
@@ -404,7 +343,7 @@ class Starter(Node):
                         vel_msg.linear.x = 0.
                         vel_msg.angular.z = 0.
                         self.state_turn = 3
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 3):
                     vel_msg.angular.z = 0.4
                     tmp = 0
@@ -414,7 +353,7 @@ class Starter(Node):
                     if tmp:
                         vel_msg.angular.z = 0.
                         self.state_turn = 4
-                    self.velocity_publisher.publish(vel_msg)
+                    self.publisher.publish(vel_msg)
                 if (self.state_turn == 4):
                     self.state = 'none'
         
