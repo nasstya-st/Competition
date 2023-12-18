@@ -18,6 +18,7 @@ class Starter(Node):
     def __init__(self):
         super().__init__('publisher')
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 1)
+        self.finish_publisher = self.create_publisher(String, 'robot_finish', 1)
         self.subscription = self.create_subscription(Empty, "robot_start", self.empty_listener_callback, 5)
         self.sign_reader = self.create_subscription(String, "signes", self.sign_reader_callback, 1)
         self.subscription = self.create_subscription(Image, "/color/image_projected_compensated",
@@ -36,7 +37,7 @@ class Starter(Node):
         #self.get_logger.info(f'{self.lab_data[-1]}')
         
         self.is_started = 0
-        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking', 'intersection', 'tunnel']
+        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking', 'intersection', 'tunnel', 'finish']
         self.state = 'none'
         self.avoid_blocks_state = 0  # 0 before mission
         self.state_turn = 0
@@ -48,6 +49,7 @@ class Starter(Node):
         
     def sign_reader_callback(self, msg):
     	state = msg.data
+    	if state==
     	self.state = state
         
     def change_avoid_blocks_state(self, state):
@@ -400,8 +402,11 @@ class Starter(Node):
             case 'none':
                 new_vel = self.pid.update_error()
                 self.publisher.publish(new_vel)
-
-
+            case 'finish':
+                self.finish_publisher.publish('fredy fazbear ur ur ur ur')
+                cmd_vel = Twist()
+                cmd_vel.linear.x = 0.
+                self.publisher.publish(cmd_vel)
   
     def empty_listener_callback(self, msg):
         self.is_started = 1

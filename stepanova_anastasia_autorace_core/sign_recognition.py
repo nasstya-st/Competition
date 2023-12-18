@@ -115,10 +115,15 @@ def remove_outliers(points, threshold):
     return points[mask]
 
 
-def detectTrafficSigns(img, threshold=15):
+def detectTrafficSigns(img, deph_image, threshold=15):
     global i
     classFound = [0] * len(classNames)
     currentImage = np.copy(img)
+    
+    mask = deph_image > 128
+    # Apply the mask to the frame
+    current_image[mask] = [0, 0, 0]
+    
     gray_image = cv2.cvtColor(currentImage, cv2.COLOR_BGR2GRAY)
     matchRaw, matchLen, coordinates, classIndices = checkMatch(gray_image, descList, keypointList)
     classID = getClass(matchLen, classIndices, threshold)
@@ -157,6 +162,6 @@ def detectTrafficSigns(img, threshold=15):
 
 
     
-def recognition(img):
-    cur_img, findedClass = detectTrafficSigns(img, threshold=15)
+def recognition(img, deph_image):
+    cur_img, findedClass = detectTrafficSigns(img, deph_image, threshold=15)
     return  cur_img, findedClass, classNames

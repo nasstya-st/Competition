@@ -17,6 +17,7 @@ class PID():
         self.curr_time = 0
         
     def calc_error(self, img):
+        # lane lines detection
         b1 = 232
         g1 = 0
         r1 = 0
@@ -28,6 +29,7 @@ class PID():
 
         gray = cv2.inRange(img, h_min, h_max)
 
+        # cutting image
         dst = gray[int(gray.shape[0]/3*2):, :]
         
         cv2.imshow("dst", dst)
@@ -36,6 +38,8 @@ class PID():
         dst = np.array(dst, dtype=np.int8)
         
         cnt, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
+        
+        # looking for the new lane line points and calculating the error
 
         if cnt > 1:
             mindistance1 = []
@@ -71,9 +75,10 @@ class PID():
         Kp, Ki, Kd = (0.018, 0.0, 0.017)
         cmd_vel = Twist()
         cmd_vel.linear.x = 0.15
+        # calculating new angular velocity based on the proportional and differential parts of the error
         cmd_vel.angular.z = float( \
         	            Kp * self.error[-1] + \
-                            Ki * np.sum(np.array(self.error)*self.timer_period) + \
-                            Kd * (self.error[-1] - self.error[-2]) / self.timer_period )
+                        Ki * np.sum(np.array(self.error)*self.timer_period) + \
+                        Kd * (self.error[-1] - self.error[-2]) / self.timer_period )
         return cmd_vel
         

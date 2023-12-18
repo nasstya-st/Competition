@@ -29,7 +29,9 @@ class Recognition(Node):
         cv_bridge = CvBridge()
         global timer
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-       	cur_img, findedClass, names = recognition(frame)
+        
+       	cur_img, findedClass, names = recognition(frame, deph_image) # сделать депт имадж глобальной переменной и создать подписчика
+       	self.sign_printer.publish(str(findedClass))
         cv2.imshow("result", cur_img)
         cv2.waitKey(1)
         self.get_logger().info(f'found: {findedClass}')
