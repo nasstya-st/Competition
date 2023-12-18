@@ -5,12 +5,10 @@ import os
 import os.path 
 import sys
 from ament_index_python.packages import get_package_share_directory
-orb = cv2.ORB_create(1000000)
-orb1 = cv2.ORB_create(100)
+orb = cv2.ORB_create(100000)
+orb1 = cv2.ORB_create(1000)
 stages = 0
-signs = [['traffic_intersection'], ['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
-orb = cv2.ORB_create()
-orb1 = cv2.ORB_create()
+signs = [['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
 def lab():
     global stages
     matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
@@ -53,6 +51,7 @@ def update_classes():
 
 update_classes()
 
+
 # Create Descriptor for each image class
 def createDesc(images):
     descList = []
@@ -89,7 +88,7 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
                     goodMatches.append([m])
                     goods.append([m, n])
                     coordinates.append(img_keypoint[m.queryIdx].pt)            
-            if(len(goodMatches) >= 15):
+            if(len(goodMatches) >= 10):
                 # Remove matches that are far away
                 img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
                 #cv2.imshow('Matches', img3)
@@ -184,5 +183,5 @@ def detectTrafficSignsOnDataset(img, threshold=15):
 def recognition(img, depth_image):
     #mask = depth_image > 128
     #img[mask] = [0, 0, 0]
-    cur_img, findedClass = detectTrafficSignsOnDataset(img, 10)
+    cur_img, findedClass = detectTrafficSignsOnDataset(img, 5)
     return  cur_img, findedClass, classNames
