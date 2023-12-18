@@ -32,29 +32,37 @@ class Starter(Node):
         self.timer_period = 0.2
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
         self.pid = PID(self.timer_period)
-        
         self.lab_data = lab()
-        #self.get_logger.info(f'{self.lab_data[-1]}')
+        
         
         self.is_started = 0
-        #states = ['none', 'pedestrian', 'avoid_blocks', 'parking', 'intersection', 'tunnel', 'finish']
+        #states = ['none', 'pedestrian_crossing_sign', 'traffic_construction', 
+        #          'traffic_parking', 'traffic_intersection', 'tunnel', 'finish']
         self.state = 'none'
         self.avoid_blocks_state = 0  # 0 before mission
+        
         self.state_turn = 0
         self.l_r = "" # left или right, зависит от определения знака
 
         self.state_parking = 0
-        self.park = 0
-        self.d_r_l = 0
+        self.park = 0  # left or right
+        self.d_r_l = 0 # distance to parked car
         
     def sign_reader_callback(self, msg):
-    	state = msg.data
-    	if state == 'intersection_left': self.l_r = 'left'
-    	elif state == 'intersection_right': self.l_r = 'right'
-    	elif state == 'traffic_intersection': self.state = 'intersection'
-    	else: self.state = state
+        '''
+    	gets information about detected signes
+    	and changes state correspondingly
+        '''
+        state = msg.data
+        if state == 'intersection_left': self.l_r = 'left'
+        elif state == 'intersection_right': self.l_r = 'right'
+        #elif state == 'traffic_intersection': self.state = 'intersection'
+        else: self.state = state
         
     def change_avoid_blocks_state(self, state):
+        '''
+        subfunction to change states
+        '''
         cmd_vel = Twist()
         cmd_vel.linear.x = 0.
         cmd_vel.angular.z = 0.
@@ -63,8 +71,11 @@ class Starter(Node):
         
         
     def avoid_blocks(self, data):
-    	cmd_vel = Twist()
-    	match self.avoid_blocks_state:
+        '''
+        function for construction mission
+        '''
+        cmd_vel = Twist()
+        match self.avoid_blocks_state:
             case 0:
                 if data[80] > 0.3:
                     cmd_vel.linear.x = 0.5
@@ -144,209 +155,222 @@ class Starter(Node):
                     self.change_avoid_blocks_state(-1)                  
                     self.state = 'none'  
                     
-    def parking(self, ranges):
+    def parking(self, laser):
+        '''
+        function for parking mission
+        '''        
         vel_msg = Twist()
-        laser = ranges
-        if (len(laser)!=0):
-            if self.state_parking==0:
-                tmp = 0
-                for i in range (20):
-                    if laser[250+i]<0.3:
-                        tmp=1
-                        
-                if tmp:
-                    vel_msg.linear.x = 0.0
-                    self.state_parking = 1
-                else:
-                    vel_msg.linear.x = 0.25
+        if (len(laser)==0): return
+
+        if self.state_parking==0:
+            tmp = 0
+            for i in range (20):
+                if laser[250+i]<0.3:
+                    tmp=1
                     
-                vel_msg.angular.z = 0.0
-                self.publisher.publish(vel_msg)
+            if tmp:
+                vel_msg.linear.x = 0.0
+                self.state_parking = 1
+            else:
+                vel_msg.linear.x = 0.25
                 
-            if self.state_parking == 1:
-                tmp = 0
-                for i in range (10):
-                    if laser[130+i]<0.3:
-                        tmp=1
-                        
-                if tmp:
-                    vel_msg.angular.z = 0.0
-                    self.state_parking = 2
-                else:
-                    vel_msg.angular.z = 0.58
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
             
-                self.publisher.publish(vel_msg)
-                
-            if(self.state_parking==2):
-                if (laser[79]<0.41 or laser[281]<0.41):
-                    vel_msg.linear.x = 0.0
-                    self.state_parking = 3
-                else:
-                    vel_msg.linear.x = 0.35
+        if self.state_parking == 1:
+            tmp = 0
+            for i in range (10):
+                if laser[130+i]<0.3:
+                    tmp=1
                     
+            if tmp:
                 vel_msg.angular.z = 0.0
-                self.publisher.publish(vel_msg)
-                if (self.state_parking==3):
-                    if (laser[79]<0.41):
-                        self.d_r_l = laser[79]
-                        self.state_parking = 4
-                        self.park = 1
-                    if (laser[281]<0.41):
-                        self.d_r_l = laser[281]
-                        self.state_parking = 5
-                        self.park = 2
-                   
-                    time.sleep(2)
-                    
-            if (self.state_parking==4 or self.state_parking ==5):
-                if self.state_parking==4:
-                    vel_msg.angular.z = -0.4
-                if self.state_parking==5:
-                    vel_msg.angular.z = 0.4
-                self.publisher.publish(vel_msg)
+                self.state_parking = 2
+            else:
+                vel_msg.angular.z = 0.58
+        
+            self.publisher.publish(vel_msg)
+            
+        if(self.state_parking==2):
+            if (laser[79]<0.41 or laser[281]<0.41):
+                vel_msg.linear.x = 0.0
+                self.state_parking = 3
+            else:
+                vel_msg.linear.x = 0.35
+                
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
+            if (self.state_parking==3):
+                if (laser[79]<0.41):
+                    self.d_r_l = laser[79]
+                    self.state_parking = 4
+                    self.park = 1
+                if (laser[281]<0.41):
+                    self.d_r_l = laser[281]
+                    self.state_parking = 5
+                    self.park = 2
                
-                if (laser[179]<0.2):
-                    self.d = laser[179]
-                    vel_msg.linear.x = 0.0
-                    vel_msg.angular.z = 0.0
-                    self.publisher.publish(vel_msg)
-                    self.state_parking = 6
-                    time.sleep(2)
+                time.sleep(2)
                 
-                    
-            if (self.state_parking == 6):
-                
-                vel_msg.linear.x = 0.18
+        if (self.state_parking==4 or self.state_parking ==5):
+            if self.state_parking==4:
+                vel_msg.angular.z = -0.4
+            if self.state_parking==5:
+                vel_msg.angular.z = 0.4
+            self.publisher.publish(vel_msg)
+           
+            if (laser[179]<0.2):
+                self.d = laser[179]
+                vel_msg.linear.x = 0.0
                 vel_msg.angular.z = 0.0
                 self.publisher.publish(vel_msg)
+                self.state_parking = 6
+                time.sleep(2)
+            
                 
-               
-                if self.park == 2:
-                    if (laser[179]>self.d+0.15):
-                        vel_msg.linear.x = 0.0
-                        self.state_parking = 7
-                        self.publisher.publish(vel_msg)
-                        time.sleep(3)
-                else:
-                    if (laser[179]>self.d+0.2):
-                        vel_msg.linear.x = 0.0
-                        self.state_parking = 7
-                        self.publisher.publish(vel_msg)
-                        time.sleep(3)
-            if (self.state_parking==7):
-                vel_msg.linear.x = -0.14
-                vel_msg.angular.z = 0.0
-                self.publisher.publish(vel_msg)
-                if (laser[179]<self.d+0.05):
+        if (self.state_parking == 6):
+            
+            vel_msg.linear.x = 0.18
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
+            
+           
+            if self.park == 2:
+                if (laser[179]>self.d+0.15):
                     vel_msg.linear.x = 0.0
-                    self.publisher.publish(vel_msg)
-                    self.state_parking = 8
-                    
-                    time.sleep(3)
-                
-    
-            if (self.state_parking==8):
-                if self.park==1:
-                    vel_msg.angular.z = -1.05
-                    
-                if self.park==2:
-                    vel_msg.angular.z = 1.34
-                self.publisher.publish(vel_msg)
-    
-                if (laser[79]<self.d_r_l+0.4 or laser[281]<self.d_r_l+0.45):
-                    vel_msg.angular.z = 0.0
-                    self.state_parking = 9
+                    self.state_parking = 7
                     self.publisher.publish(vel_msg)
                     time.sleep(3)
-                    self.state = 'none'
+            else:
+                if (laser[179]>self.d+0.2):
+                    vel_msg.linear.x = 0.0
+                    self.state_parking = 7
+                    self.publisher.publish(vel_msg)
+                    time.sleep(3)
+        if (self.state_parking==7):
+            vel_msg.linear.x = -0.14
+            vel_msg.angular.z = 0.0
+            self.publisher.publish(vel_msg)
+            if (laser[179]<self.d+0.05):
+                vel_msg.linear.x = 0.0
+                self.publisher.publish(vel_msg)
+                self.state_parking = 8
+                
+                time.sleep(3)
+            
+
+        if (self.state_parking==8):
+            if self.park==1:
+                vel_msg.angular.z = -1.05
+                
+            if self.park==2:
+                vel_msg.angular.z = 1.34
+            self.publisher.publish(vel_msg)
+
+            if (laser[79]<self.d_r_l+0.4 or laser[281]<self.d_r_l+0.45):
+                vel_msg.angular.z = 0.0
+                self.state_parking = 9
+                self.publisher.publish(vel_msg)
+                time.sleep(3)
+                self.state = 'none'
                  
                  
     def intersection(self, laser):
-        if (len(laser)!=0):
-            if (self.l_r == 'right'):
-                if(self.state_turn == 0):
-                    vel_msg.linear.x = 0.
-                    vel_msg.angular.z = -0.4
-                    tmp = 0
-                    for i in range (10):
-                        if laser[60+i]<0.2:
-                            tmp=1
-                    if tmp:
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 1
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 1):
-                    vel_msg.linear.x = 0.32
-                    vel_msg.angular.z = 1.
-                    tmp = 0
-                    for i in range (20):
-                        if laser[140+i]<0.7 and laser[140+i]>0.25:
-                            tmp=1
-                    if tmp:
-                        vel_msg.linear.x = 0.
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 2
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 2):
-                    vel_msg.angular.z = -0.4
-                    tmp = 0
-                    for i in range (20):
-                        if laser[190+i]<0.5:
-                            tmp=1
-                    if tmp:
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 3
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 3):
-                    self.state = 'none'
+        '''
+        function for intersection mission
+        '''
+        if (len(laser)==0): return
 
-            elif (self.l_r == 'left'):
-                if(self.state_turn == 0):
+        if (self.l_r == 'right'):
+            if(self.state_turn == 0):
+                vel_msg.linear.x = 0.
+                vel_msg.angular.z = -0.4
+                tmp = 0
+                for i in range (10):
+                    if laser[60+i]<0.2:
+                        tmp=1
+                if tmp:
+                    vel_msg.angular.z = 0.
+                    self.state_turn = 1
+                self.publisher.publish(vel_msg)
+            if (self.state_turn == 1):
+                vel_msg.linear.x = 0.32
+                vel_msg.angular.z = 1.
+                tmp = 0
+                for i in range (20):
+                    if laser[140+i]<0.7 and laser[140+i]>0.25:
+                        tmp=1
+                if tmp:
                     vel_msg.linear.x = 0.
-                    vel_msg.angular.z = 0.4
-                    tmp = 0
-                    for i in range (10):
-                        if laser[290+i]<0.3:
-                            tmp=1 
-                    if tmp:
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 1
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 1):
-                    vel_msg.linear.x = 0.32
-                    vel_msg.angular.z = -1.
-                    tmp = 0
-                    for i in range (20):
-                        if laser[270+i]<0.7 and laser[270+i]>0.3:
-                            tmp=1
-                    if tmp:
-                        vel_msg.linear.x = 0.
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 2
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 2):
-                    vel_msg.angular.z = 0.4
-                    tmp = 0
-                    for i in range (20):
-                        if laser[175+i]<0.5:
-                            tmp=1
-                    if tmp:
-                        vel_msg.angular.z = 0.
-                        self.state_turn = 3
-                    self.publisher.publish(vel_msg)
-                if (self.state_turn == 3):
-                    self.state = 'none'
+                    vel_msg.angular.z = 0.
+                    self.state_turn = 2
+                self.publisher.publish(vel_msg)
+            if (self.state_turn == 2):
+                vel_msg.angular.z = -0.4
+                tmp = 0
+                for i in range (20):
+                    if laser[190+i]<0.5:
+                        tmp=1
+                if tmp:
+                    vel_msg.angular.z = 0.
+                    self.state_turn = 3
+                self.publisher.publish(vel_msg)
+            if (self.state_turn == 3):
+                self.state = 'none'
+
+        elif (self.l_r == 'left'):
+            if(self.state_turn == 0):
+                vel_msg.linear.x = 0.
+                vel_msg.angular.z = 0.4
+                tmp = 0
+                for i in range (10):
+                    if laser[290+i]<0.3:
+                        tmp=1 
+                if tmp:
+                    vel_msg.angular.z = 0.
+                    self.state_turn = 1
+                self.publisher.publish(vel_msg)
+            if (self.state_turn == 1):
+                vel_msg.linear.x = 0.32
+                vel_msg.angular.z = -1.
+                tmp = 0
+                for i in range (20):
+                    if laser[270+i]<0.7 and laser[270+i]>0.3:
+                        tmp=1
+                if tmp:
+                    vel_msg.linear.x = 0.
+                    vel_msg.angular.z = 0.
+                    self.state_turn = 2
+                self.publisher.publish(vel_msg)
+            if (self.state_turn == 2):
+                vel_msg.angular.z = 0.4
+                tmp = 0
+                for i in range (20):
+                    if laser[175+i]<0.5:
+                        tmp=1
+                if tmp:
+                    vel_msg.angular.z = 0.
+                    self.state_turn = 3
+                self.publisher.publish(vel_msg)
+            if (self.state_turn == 3):
+                self.state = 'none'
         
     def lidar_callback(self, msg):
+        '''
+        gets lidar information and 
+        calls functions if needed
+        '''
         if not self.is_started : return
         
         data = msg.ranges
         
-        if self.state == 'avoid_blocks':
+        if self.state == 'traffic_construction':
             self.avoid_blocks(data)
-        elif self.state == 'intersection':
+        elif self.state == 'traffic_intersection':
             self.intersection(data)
-        elif self.state == 'pedestrian':
+        elif self.state == 'traffic_parking':
+            self.parking(data)
+        elif self.state == 'pedestrian_crossing_sign':
             left = np.array(data[:4])
             right = np.array(data[356:])
             center = np.concatenate((left, right), axis=None)
@@ -364,7 +388,7 @@ class Starter(Node):
             if data[90]<0.5:
                 cmd_vel.linear.x = 0.
                 self.publisher.publish(cmd_vel)
-                self.state = 'none'
+                self.state = 'finish'
             #self.get_logger().info(f'{res, center, data[90]}')
      
     def traffic_light_callback(self, msg):
