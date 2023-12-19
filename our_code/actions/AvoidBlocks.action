@@ -1,0 +1,10 @@
+# goal definition
+string command 	# "forward","turn_left", "turn_right" 
+int32 s 
+int32 angle
+---
+# result definition
+bool result
+---
+#feedback
+int32 odom
