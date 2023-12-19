@@ -149,7 +149,30 @@ def getClass(matches, classIndices, threshold=10):
             finalClass = classIndices[maxMatchIndex]
     return finalClass
     
-    
+  
+def is_arrow_pointing_up(image):
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Use Canny edge detection
+    edges = cv2.Canny(gray, 50, 150)
+
+    # Perform a Hough Line Transform to find lines in the image
+    lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=20, minLineLength=50, maxLineGap=10)
+
+    if lines is not None:
+        # Calculate the angle of each line with respect to the horizontal axis
+        angles = []
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
+            angles.append(angle)
+
+        # If the average angle of the lines is positive, the arrow is pointing up
+        if np.mean(angles) > 0:
+            return True
+
+    return False
 
 
 def detectTrafficSignsOnDataset(img, threshold=15):
@@ -166,6 +189,12 @@ def detectTrafficSignsOnDataset(img, threshold=15):
     if (classID != -1):
         stages = (stages + 1) % 6
         findedClass = classNames[classID]
+        if (findedClass in'['traffic_left', 'traffic_right']):
+            if is_arrow_pointing_up(currentImage):
+                findedClass = 'traffic_right'
+            else:
+                findedClass = 'traffic_left'
+            
         classFound[classID] += 1
         cv2.putText(currentImage, f'Detected: {classNames[classID]} deb: {matchLen}', (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
         # Convert your list of points to a numpy array of type int32
