@@ -13,13 +13,18 @@ import matplotlib.pyplot as plt
 from .sign_recognition import lab, recognition
 
 global depth_image
+global not_check_first_two
+not_check_first_two = 0
+
 time_to_check = 0
 class Recognition(Node):
     def __init__(self):
         super().__init__('subscription')
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 1)
         self.sign_printer = self.create_publisher(String, '/signes', 1)
-        self.subscription = self.create_subscription(Empty, "robot_start", self.empty_listener_callback, 1)
+
+        self.subscription = self.create_subscription(String, "robot_stop", self.empty_listener_callback, 1)
+
         self.starter = self.create_subscription(Image, "/color/image", self.traffic_light_callback, 1)
         self.recognizer = self.create_subscription(Image, "/color/image", self.recognizer_callback, 1)
         self.depth = self.create_subscription(Image, "/depth/image", self.depth_callback, 1)
@@ -39,10 +44,14 @@ class Recognition(Node):
     def check_sign(self):
         global time_to_check
         time_to_check = 0
+        global not_check_first_two
         laser = self.scan.ranges
+        if len(laser)==0: return
         for i in range(20):
             if laser[5+i]<0.5 or laser[i+334]<0.5:
-                time_to_check = 1
+                if not_check_first_two == 2:
+                    time_to_check = 1
+                else: not_check_first_two+=1
     
     def recognizer_callback(self, msg):
         if not self.is_started: 
@@ -79,11 +88,10 @@ class Recognition(Node):
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         if not self.is_started:
             if frame[300, 600][1]==109: self.is_started = 1
-            
+      
       
 def main(args=None):
     rclpy.init(args=args)
     recognsing= Recognition()
     rclpy.spin(recognsing)
     rclpy.shutdown()
-

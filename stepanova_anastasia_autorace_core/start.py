@@ -25,9 +25,9 @@ class Starter(Node):
          	    self.image_callback, 1) 	    
         self.starter = self.create_subscription(Image, "/color/image",
          	    self.traffic_light_callback, 1) 
-        self.recognizer = self.create_subscription(Image, "/color/image", self.recognizer_callback, 1) 
+        #self.recognizer = self.create_subscription(Image, "/color/image", self.recognizer_callback, 1) 
         self.lidar = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 1)  	    
-        
+        self.publisher1 = self.create_publisher(String, "robot_stop", 1)
          	    
         self.timer_period = 0.2
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
@@ -36,28 +36,33 @@ class Starter(Node):
         
         
         self.is_started = 0
+        self.is_reading = 1
         #states = ['none', 'pedestrian_crossing_sign', 'traffic_construction', 
         #          'traffic_parking', 'traffic_intersection', 'tunnel', 'finish']
         self.state = 'none'
         self.avoid_blocks_state = 0  # 0 before mission
         
-        self.state_turn = 0
+        self.state_turn = -1
         self.l_r = "" # left или right, зависит от определения знака
 
         self.state_parking = 0
         self.park = 0  # left or right
         self.d_r_l = 0 # distance to parked car
+        self.flag1 = 0
         
     def sign_reader_callback(self, msg):
         '''
     	gets information about detected signes
     	and changes state correspondingly
         '''
+        if not self.is_reading: return
         state = msg.data
-        if state == 'intersection_left': self.l_r = 'left'
-        elif state == 'intersection_right': self.l_r = 'right'
+        if state == 'traffic_left': self.l_r = 'left'
+        elif state == 'traffic_right': self.l_r = 'right'
         #elif state == 'traffic_intersection': self.state = 'intersection'
-        else: self.state = state
+        self.state = state
+        if self.state!='none' and self.state!='traffic_intersection': self.is_reading =  0
+        self.get_logger().info(f'{self.state}')
         
     def change_avoid_blocks_state(self, state):
         '''
@@ -279,8 +284,29 @@ class Starter(Node):
         '''
         function for intersection mission
         '''
+        vel_msg=Twist()
         if (len(laser)==0): return
-
+         
+        if self.flag1==0:
+            for i in range (20):
+                if laser[329+i]<1.0:
+                    self.flag1 = 1
+                    self.l_r = "right"
+                if self.flag1==0:
+                    self.flag1 = 1
+                    self.l_r = "left"
+        #self.get_logger().info(f'{self.flag1}')
+        if self.state_turn == -1:
+            vel_msg.linear.x = 0.06
+            vel_msg.angular.z = 0.
+            tmp = 0
+            for i in range (20):
+                if laser[20+i]<0.2 or laser[310+i]<0.2:
+                    tmp=1
+            if tmp:
+                vel_msg.linear.x = 0.
+                self.state_turn = 0
+            self.publisher.publish(vel_msg)
         if (self.l_r == 'right'):
             if(self.state_turn == 0):
                 vel_msg.linear.x = 0.
@@ -316,7 +342,9 @@ class Starter(Node):
                     self.state_turn = 3
                 self.publisher.publish(vel_msg)
             if (self.state_turn == 3):
+                self.pid.velocity = 0.1
                 self.state = 'none'
+                self.is_reading =  1
 
         elif (self.l_r == 'left'):
             if(self.state_turn == 0):
@@ -324,7 +352,7 @@ class Starter(Node):
                 vel_msg.angular.z = 0.4
                 tmp = 0
                 for i in range (10):
-                    if laser[290+i]<0.3:
+                    if laser[290+i]<0.3 :
                         tmp=1 
                 if tmp:
                     vel_msg.angular.z = 0.
@@ -349,11 +377,14 @@ class Starter(Node):
                     if laser[175+i]<0.5:
                         tmp=1
                 if tmp:
+                    vel_msg.linear.x = 0.0
                     vel_msg.angular.z = 0.
                     self.state_turn = 3
                 self.publisher.publish(vel_msg)
             if (self.state_turn == 3):
-                self.state = 'none'
+                self.state = 'finish'
+                self.pid.velocity = 0.
+                self.is_reading =  1
         
     def lidar_callback(self, msg):
         '''
@@ -366,7 +397,7 @@ class Starter(Node):
         
         if self.state == 'traffic_construction':
             self.avoid_blocks(data)
-        elif self.state == 'traffic_intersection':
+        elif self.l_r:
             self.intersection(data)
         elif self.state == 'traffic_parking':
             self.parking(data)
@@ -392,12 +423,19 @@ class Starter(Node):
             #self.get_logger().info(f'{res, center, data[90]}')
      
     def traffic_light_callback(self, msg):
+        '''
+        checks the traffic light and starts robot
+        '''
         cv_bridge = CvBridge()
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         if not self.is_started:
             if frame[300, 600][1]==109: self.is_started = 1
 
     def timer_callback(self):
+        '''
+        calls speed update function
+        or finishes ride
+        '''
         if not self.is_started: return
         
         match self.state:
@@ -410,17 +448,28 @@ class Starter(Node):
                 cmd_vel = Twist()
                 cmd_vel.linear.x = 0.
                 self.publisher.publish(cmd_vel)
-  
+        msg = String()
+        if self.state!='none': msg.data = 'stop'
+        else: msg.data = 'start'
+        
+        self.publisher1.publish(msg)
+            
     def empty_listener_callback(self, msg):
+        '''
+        starts robot from topic robot_start
+        '''
         self.is_started = 1
         
-    def recognizer_callback(self, msg):
+    '''def recognizer_callback(self, msg):
         cv_bridge = CvBridge()
         frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         #rec_signs = recognition(frame, *self.lab_data)
-        #self.get_logger().info(f'{rec_signs}')
+        #self.get_logger().info(f'{rec_signs}')'''
         
     def image_callback(self, msg):
+        '''
+        gets image for pid to calculate error
+        '''
         if not self.is_started: return
         
         cv_bridge = CvBridge()
