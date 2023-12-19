@@ -343,7 +343,7 @@ class Starter(Node):
                 self.publisher.publish(vel_msg)
             if (self.state_turn == 3):
                 self.pid.velocity = 0.1
-                self.state = 'none'
+                self.state = 'finish'
                 self.is_reading =  1
 
         elif (self.l_r == 'left'):
@@ -444,7 +444,9 @@ class Starter(Node):
                 self.publisher.publish(new_vel)
                 #self.get_logger().info(f'in pid')
             case 'finish':
-                self.finish_publisher.publish('fredy fazbear ur ur ur ur')
+                msg = String()
+                msg.data = 'fredy fazbear ur ur ur ur'
+                self.finish_publisher.publish(msg)
                 cmd_vel = Twist()
                 cmd_vel.linear.x = 0.
                 self.publisher.publish(cmd_vel)

@@ -189,19 +189,13 @@ def detectTrafficSignsOnDataset(img, threshold=15):
     if (classID != -1):
         stages = (stages + 1) % 6
         findedClass = classNames[classID]
-<<<<<<< HEAD
+
         if (findedClass in['traffic_left', 'traffic_right']):
             if is_arrow_pointing_up(currentImage):
                 findedClass = 'traffic_left'
             else:
                 findedClass = 'traffic_right'
-=======
-        if (findedClass in'['traffic_left', 'traffic_right']):
-            if is_arrow_pointing_up(currentImage):
-                findedClass = 'traffic_right'
-            else:
-                findedClass = 'traffic_left'
->>>>>>> 4e305fa62a0b2542f43db07571dd1e7aead3705c
+
             
         classFound[classID] += 1
         cv2.putText(currentImage, f'Detected: {classNames[classID]} deb: {matchLen}', (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)

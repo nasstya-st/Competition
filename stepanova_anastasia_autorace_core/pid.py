@@ -15,6 +15,7 @@ class PID():
         self.timer_period = timer_period
         self.error = [0,0]
         self.curr_time = 0
+        self.velocity = 0.15
         
     def calc_error(self, img):
         # lane lines detection
@@ -100,7 +101,7 @@ class PID():
         self.curr_time += self.timer_period
         Kp, Ki, Kd = (0.018, 0.0, 0.017)
         cmd_vel = Twist()
-        cmd_vel.linear.x = 0.15
+        cmd_vel.linear.x = self.velocity
         # calculating new angular velocity based on the proportional and differential parts of the error
         cmd_vel.angular.z = float( \
         	            Kp * self.error[-1] + \
