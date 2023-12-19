@@ -8,8 +8,6 @@ from cv_bridge import CvBridge, CvBridgeError
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
-from .sign_recognition import lab, recognition
 from .pid import PID
 
 
@@ -32,8 +30,6 @@ class Starter(Node):
         self.timer_period = 0.2
         self.timer = self.create_timer(self.timer_period, self.timer_callback)
         self.pid = PID(self.timer_period)
-        self.lab_data = lab()
-        
         
         self.is_started = 0
         self.is_reading = 1

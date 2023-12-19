@@ -5,32 +5,13 @@ import os
 import os.path 
 import sys
 from ament_index_python.packages import get_package_share_directory
-orb = cv2.ORB_create(100000)
-orb1 = cv2.ORB_create(1000)
+dec = cv2.SIFT_create()
+
+bf = cv2.BFMatcher()
+
 stages = 0
 #['traffic_intersection']
-signs = [['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
-def lab():
-    global stages
-    matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
-    desclist = []
-
-    pkg = get_package_share_directory('stepanova_anastasia_autorace_core')
-
-    for sign in signs[stages]:
-        full_path =  os.path.join(pkg, 'signes', str(sign) + '.png')
-        gsign = cv2.imread(full_path, cv2.IMREAD_GRAYSCALE)
-       
-        #cv2.imshow('sign', gsign)
-        #cv2.waitKey(0)
-
-        #gsign = cv2.cvtColor(sign_img, cv2.COLOR_BGR2GRAY)
-        
-        kp, desc = orb.detectAndCompute(gsign, None)
-        desclist.append([kp, desc, gsign, sign]) # add the name of the sign to the list
-        
-    return desclist, matcher, orb
-    
+signs = [['traffic_intersection'], ['traffic_left', 'traffic_right'], ['traffic_construction'], ['traffic_parking'], ['pedestrian_crossing_sign'], ['tunnel'], ]
 
 PATH_TEMPLATE = "signes"
 images = []
@@ -45,7 +26,7 @@ def update_classes():
     images = []
     classNames = []
     for className in signs[stages]:
-        full_path =  os.path.join(path_list, PATH_TEMPLATE, str(className) + '.png')
+        full_path =  os.path.join(path_list, PATH_TEMPLATE, str(className) + '.jpg')
         currentImage = cv2.imread(full_path, 0)
         images.append(currentImage)
         classNames.append(className.split(".")[0])
@@ -53,21 +34,25 @@ def update_classes():
 update_classes()
 
 
+def draw(current_image, sign_image, kp1, kp2, goods, matchesMask):
+    draw_params = dict(matchColor = (0,255,0), singlePointColor = None, matchesMask = matchesMask, flags = 2)
+    good = [m[0] for m in goods]
+    img3 = cv2.drawMatches(sign_image, kp2, current_image, kp1, good,None,**draw_params)
+    return img3
+    
 # Create Descriptor for each image class
 def createDesc(images):
     descList = []
     keypointList = []
     for img in images:
-        keypoint, descriptor = orb1.detectAndCompute(img, None)
+        keypoint, descriptor = dec.detectAndCompute(img, None)
         keypointList.append(keypoint)
         descList.append(descriptor)
     return descList, keypointList
 
 descList, keypointList = createDesc(images)
 
-def checkMatch(img, descList, keypointList, threshold=10.0):
-    img_keypoint, img_descriptor = orb.detectAndCompute(img, None)
-    bf = cv2.BFMatcher()
+def checkMatch(img_keypoint, img_descriptor, descList, keypointList):
     matchListLen = []
     matchList = []
     classIndices = []  # List to keep track of class indices
@@ -75,12 +60,6 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
     for i, desc in enumerate(descList):  # Add index to enumerate
         if (img_descriptor is not None):
             matches = bf.knnMatch(desc, img_descriptor, k=2)
-            #img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in matches for c in sublist],None, flags=2)
-
-
-            #Display the image
-            #cv2.imshow('Matches', img3)
-            #cv2.waitKey(0)
             goodMatches = []
             goods = []
             coordinates = []
@@ -89,93 +68,37 @@ def checkMatch(img, descList, keypointList, threshold=10.0):
                     goodMatches.append([m])
                     goods.append([m, n])
                     coordinates.append(img_keypoint[m.queryIdx].pt)            
-            if(len(goodMatches) >= 10):
-                # Remove matches that are far away
-                #img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
-                #cv2.imshow('Matches', img3)
-                #cv2.waitKey(0)
-                while(len(goodMatches) >= 1):
-                    centrlenght = []
-                    res_centrlenght = []
-                    for j in range(len(goodMatches)):
-                        new_coordinates = coordinates[:j] + coordinates[j+1:]
-                        centroid = np.mean(new_coordinates, axis=0)
-                        centrlenght.append([np.linalg.norm(np.array(img_keypoint[m[0].queryIdx].pt) - centroid) for m in goodMatches])
-                    res_centrlenght = [np.mean(column) for column in zip(*centrlenght)]
-                    #print(res_centrlenght)
-                    #print(len(goodMatches))
-                    #prop = np.copy(img)
-                    #for g in goods:
-                        #x, y = img_keypoint[g[0].queryIdx].pt
-                        # Now you can use these coordinates to draw a point on the image
-                        #prop = cv2.circle(prop, (int(x), int(y)), 5, (0, 255, 0), -1)
-                    #cv2.imshow('prop', prop)
-                    #cv2.waitKey(0)
-                    if(max(res_centrlenght) > threshold):
-                        #print(max(res_centrlenght))
-                        goodMatches.pop(res_centrlenght.index(max(res_centrlenght)))
-                        goods.pop(res_centrlenght.index(max(res_centrlenght)))
-                        coordinates.pop(res_centrlenght.index(max(res_centrlenght)))
-                    else:
-                        break
-                    prop = np.copy(img)
-                    #for g in goods:
-                        #x, y = img_keypoint[g[0].queryIdx].pt
-                        # Now you can use these coordinates to draw a point on the image
-                        #prop = cv2.circle(prop, (int(x), int(y)), 5, (0, 255, 0), -1)
-                    #cv2.imshow('prop', prop)
-                    #cv2.waitKey(0)
                 matchListLen.append(len(goodMatches))
                 matchList.append(goodMatches)
                 global_coor.append(coordinates)
-                #img3 = cv2.drawMatches(images[i],keypointList[i],img, img_keypoint,[c for sublist in  goods for c in sublist],None, flags=2)
-                #cv2.imshow('Matches', img3)
-                #cv2.waitKey(0)
-    
-            coordinates = []
-        classIndices.append(i)
+                classIndices.append(i)
     return matchList, matchListLen, global_coor, classIndices  # Return classIndices
     
 
 
 # Find detected class
-def getClass(matches, classIndices, threshold=10):
+def getClass(current_image, sign_image, matches, matchLen, classIndices, img_keypoint, keypointList, threshold):
     finalClass = -1
-    if (len(matches) != 0):
-        maxMatchCount = max(matches)
-        #print([classNames[i] for i in classIndices])
+    matchesMask = None
+    maxMatchIndex = -1
+    if (len(matchLen) != 0):
+        maxMatchCount = max(matchLen)
         if maxMatchCount > threshold:
-            maxMatchIndex = matches.index(maxMatchCount)
+            maxMatchIndex = matchLen.index(maxMatchCount)
             finalClass = classIndices[maxMatchIndex]
-    return finalClass
+            src_pts = np.float32([keypointList[finalClass][m[0].queryIdx].pt for m in matches[maxMatchIndex] ]).reshape(-1,1,2)
+            dst_pts  = np.float32([img_keypoint[m[0].trainIdx].pt for m in matches[maxMatchIndex] ]).reshape(-1,1,2)
+            M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+            matchesMask = mask.ravel().tolist()
+            h,w = sign_image[finalClass].shape
+            pts = np.float32([ [0,0],[0,h],[w,h],[w,0] ]).reshape(-1,1,2)
+            if M is not None and pts is not None and pts.shape[2] == M.shape[0]:
+                dst = cv2.perspectiveTransform(pts,M)
+                current_image = cv2.polylines(current_image,[np.int32(dst)],True,255,3, cv2.LINE_AA)
+    return finalClass, matchesMask, current_image, maxMatchIndex
     
-  
-def is_arrow_pointing_up(image):
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Use Canny edge detection
-    edges = cv2.Canny(gray, 50, 150)
-
-    # Perform a Hough Line Transform to find lines in the image
-    lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi/180, threshold=20, minLineLength=50, maxLineGap=10)
-
-    if lines is not None:
-        # Calculate the angle of each line with respect to the horizontal axis
-        angles = []
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
-            angles.append(angle)
-
-        # If the average angle of the lines is positive, the arrow is pointing up
-        if np.mean(angles) > 0:
-            return True
-
-    return False
-
-
-def detectTrafficSignsOnDataset(img, threshold=15):
+def detectTrafficSigns(img, threshold):
     global stages
     global descList
     global keypointList
@@ -183,40 +106,32 @@ def detectTrafficSignsOnDataset(img, threshold=15):
     classFound = [0] * len(classNames)
     currentImage = np.copy(img)
     gray_image = cv2.cvtColor(currentImage, cv2.COLOR_BGR2GRAY)
-    matchRaw, matchLen, coordinates, classIndices = checkMatch(gray_image, descList, keypointList, 200)
-    classID = getClass(matchLen, classIndices, threshold)
+    img_keypoint, img_descriptor = dec.detectAndCompute(gray_image, None)
+    matchRaw, matchLen, coordinates, classIndices = checkMatch(img_keypoint, img_descriptor, descList, keypointList)
+    classID, matchesMask, currentImage, maxMatchIndex = getClass(gray_image, images, matchRaw, matchLen, classIndices, img_keypoint, keypointList, threshold)
     findedClass = 'none'
     if (classID != -1):
         stages = (stages + 1) % 6
         findedClass = classNames[classID]
-
-        if (findedClass in['traffic_left', 'traffic_right']):
-            if is_arrow_pointing_up(currentImage):
-                findedClass = 'traffic_left'
-            else:
-                findedClass = 'traffic_right'
-
-            
         classFound[classID] += 1
         cv2.putText(currentImage, f'Detected: {classNames[classID]} deb: {matchLen}', (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
-        # Convert your list of points to a numpy array of type int32
-        points = np.array(coordinates[classIndices.index(classID)], dtype=np.int32)
-
-        # Calculate the bounding rectangle only if there are points left after outlier removal
-        update_classes()
-        descList, keypointList = createDesc(images)
+        points = np.array(coordinates[maxMatchIndex], dtype=np.int32)
         if points.size > 0:
             x, y, w, h = cv2.boundingRect(points)
-
-            # Draw the rectangle on your image
             cv2.rectangle(currentImage, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        if(matchesMask is not None):
+            current_image = draw(currentImage, images[classID], img_keypoint, keypointList[classID], matchRaw[maxMatchIndex], matchesMask)
+        update_classes()
+        descList, keypointList = createDesc(images)
+        
     else:
         cv2.putText(currentImage, f"Undetected deb: {matchLen}", (img.shape[1] // 2, img.shape[0] // 2), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1)
 
     return currentImage, findedClass
+  
         
 def recognition(img, depth_image):
     #mask = depth_image > 128
     #img[mask] = [0, 0, 0]
-    cur_img, findedClass = detectTrafficSignsOnDataset(img, 5)
+    cur_img, findedClass = detectTrafficSigns(img, 18)
     return  cur_img, findedClass, classNames

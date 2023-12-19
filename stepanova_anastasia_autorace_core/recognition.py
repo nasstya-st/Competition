@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .sign_recognition import lab, recognition
+from .sign_recognition import recognition
 
 global depth_image
 global not_check_first_two
