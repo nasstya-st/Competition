@@ -47,8 +47,8 @@ class Recognition(Node):
         global not_check_first_two
         laser = self.scan.ranges
         if len(laser)==0: return
-        for i in range(20):
-            if laser[5+i]<0.5 or laser[i+334]<0.5:
+        for i in range(30):
+            if laser[5+i]<0.5 or laser[i+324]<0.5:
                 if not_check_first_two == 2:
                     time_to_check = 1
                 else: not_check_first_two+=1

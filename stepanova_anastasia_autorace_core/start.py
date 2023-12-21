@@ -36,7 +36,7 @@ class Starter(Node):
         #states = ['none', 'pedestrian_crossing_sign', 'traffic_construction', 
         #          'traffic_parking', 'traffic_intersection', 'tunnel', 'finish']
         self.state = 'none'
-        self.avoid_blocks_state = 0  # 0 before mission
+        self.avoid_blocks_state = -1  # -1 before mission
         
         self.state_turn = -1
         self.l_r = "" # left или right, зависит от определения знака
@@ -77,6 +77,13 @@ class Starter(Node):
         '''
         cmd_vel = Twist()
         match self.avoid_blocks_state:
+            case -1:
+                if data[180] < 2:
+                    cmd_vel.linear.x = 0.
+                    cmd_vel.angular.z = 0.3
+                    self.publisher.publish(cmd_vel)
+                else:
+                    self.change_avoid_blocks_state(0)  
             case 0:
                 if data[80] > 0.3:
                     cmd_vel.linear.x = 0.5
@@ -283,21 +290,21 @@ class Starter(Node):
         vel_msg=Twist()
         if (len(laser)==0): return
          
-        if self.flag1==0:
+        '''if self.flag1==0:
             for i in range (20):
                 if laser[329+i]<1.0:
                     self.flag1 = 1
                     self.l_r = "right"
                 if self.flag1==0:
                     self.flag1 = 1
-                    self.l_r = "left"
+                    self.l_r = "left"'''
         #self.get_logger().info(f'{self.flag1}')
         if self.state_turn == -1:
             vel_msg.linear.x = 0.06
             vel_msg.angular.z = 0.
             tmp = 0
             for i in range (20):
-                if laser[20+i]<0.2 or laser[310+i]<0.2:
+                if laser[35+i]<0.2 or laser[339+i]<0.2:
                     tmp=1
             if tmp:
                 vel_msg.linear.x = 0.
@@ -309,7 +316,7 @@ class Starter(Node):
                 vel_msg.angular.z = -0.4
                 tmp = 0
                 for i in range (10):
-                    if laser[60+i]<0.2:
+                    if laser[80+i]<0.2:
                         tmp=1
                 if tmp:
                     vel_msg.angular.z = 0.
@@ -320,7 +327,7 @@ class Starter(Node):
                 vel_msg.angular.z = 1.
                 tmp = 0
                 for i in range (20):
-                    if laser[140+i]<0.7 and laser[140+i]>0.25:
+                    if laser[150+i]<0.7 and laser[150+i]>0.17:
                         tmp=1
                 if tmp:
                     vel_msg.linear.x = 0.
@@ -331,7 +338,7 @@ class Starter(Node):
                 vel_msg.angular.z = -0.4
                 tmp = 0
                 for i in range (20):
-                    if laser[190+i]<0.5:
+                    if laser[175+i]<0.5:  #0.5-0.6
                         tmp=1
                 if tmp:
                     vel_msg.angular.z = 0.
@@ -339,8 +346,11 @@ class Starter(Node):
                 self.publisher.publish(vel_msg)
             if (self.state_turn == 3):
                 self.pid.velocity = 0.1
-                self.state = 'finish'
+                self.state = 'none'
                 self.is_reading =  1
+                self.pid.error[-1] = 0
+                self.pid.error[-2] = 0
+                self.l_r = 0
 
         elif (self.l_r == 'left'):
             if(self.state_turn == 0):
@@ -355,11 +365,11 @@ class Starter(Node):
                     self.state_turn = 1
                 self.publisher.publish(vel_msg)
             if (self.state_turn == 1):
-                vel_msg.linear.x = 0.32
+                vel_msg.linear.x = 0.3
                 vel_msg.angular.z = -1.
                 tmp = 0
                 for i in range (20):
-                    if laser[270+i]<0.7 and laser[270+i]>0.3:
+                    if laser[280+i]<0.7 and laser[280+i]>0.3:
                         tmp=1
                 if tmp:
                     vel_msg.linear.x = 0.
@@ -370,7 +380,7 @@ class Starter(Node):
                 vel_msg.angular.z = 0.4
                 tmp = 0
                 for i in range (20):
-                    if laser[175+i]<0.5:
+                    if laser[165+i]<0.7:
                         tmp=1
                 if tmp:
                     vel_msg.linear.x = 0.0
@@ -378,9 +388,12 @@ class Starter(Node):
                     self.state_turn = 3
                 self.publisher.publish(vel_msg)
             if (self.state_turn == 3):
-                self.state = 'finish'
-                self.pid.velocity = 0.
+                self.state = 'none'
+                self.pid.error[-1] = 0
+                self.pid.error[-2] = 0
                 self.is_reading =  1
+                
+                self.l_r = 0
         
     def lidar_callback(self, msg):
         '''
@@ -390,6 +403,7 @@ class Starter(Node):
         if not self.is_started : return
         
         data = msg.ranges
+        #self.get_logger().info(f'{data[0]}')
         
         if self.state == 'traffic_construction':
             self.avoid_blocks(data)
@@ -472,8 +486,8 @@ class Starter(Node):
         
         cv_bridge = CvBridge()
         image = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        
-        self.pid.calc_error(image)
+        if self.state == "none":
+            self.pid.calc_error(image)
                  
         
 def main(args=None):

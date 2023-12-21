@@ -99,7 +99,7 @@ class PID():
         
     def update_error(self):
         self.curr_time += self.timer_period
-        Kp, Ki, Kd = (0.018, 0.0, 0.017)
+        Kp, Ki, Kd = (0.014, 0.0, 0.0125)
         cmd_vel = Twist()
         cmd_vel.linear.x = self.velocity
         # calculating new angular velocity based on the proportional and differential parts of the error

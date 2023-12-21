@@ -1,109 +1,127 @@
-import rclpy, sys
+import rclpy, sys, time
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Empty
-from sensor_msgs.msg import Image
-import matplotlib.pyplot as plt
-from cv_bridge import CvBridge
-import cv2
+from std_msgs.msg import Empty, String
+from sensor_msgs.msg import Image, LaserScan
+from rclpy.executors import MultiThreadedExecutor
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import LaserScan
+import cv2 as cv
 import numpy as np
+import matplotlib.pyplot as plt
 
-class CirclePublisher(Node):
+from .sign_recognition import lab, recognition
 
+MIN_MATCH_COUNT = 4
+
+def assay(good, matchesMask1, img2):
+	if len(good)>MIN_MATCH_COUNT:
+		src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+		dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+		M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC,5.0)
+		matchesMask1 = mask.ravel().tolist()
+		h,w = img1.shape
+		pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+		dst = cv.perspectiveTransform(pts,M)
+		img2 = cv.polylines(img2,[np.int32(dst)],True,255,3, cv.LINE_AA)
+		return matchesMask1
+	else:
+		print( "Not enough matches are found - {}/{}".format(len(good), MIN_MATCH_COUNT) )
+		matchesMask1 = None
+		return matchesMask1
+
+def mat(des2):
+	matches = flann.knnMatch(des1,des2,k=2)
+	return matches
+	
+def g(matches):
+	good = []
+	for m,n in matches:
+		if m.distance < 0.8*n.distance:
+			good.append(m)
+	return good
+
+
+def lab():
+    detector = cv.SIFT_create()
+    
+
+global depth_image
+global not_check_first_two
+not_check_first_two = 0
+path_list = get_package_share_directory('stepanova_anastasia_autorace_core')
+PATH_TEMPLATE = "signes"
+full_path =  os.path.join(path_list, PATH_TEMPLATE, 'traffic_left.png')
+
+time_to_check = 0
+class Recognition(Node):
     def __init__(self):
-        super().__init__('publisher')
+        super().__init__('subscription')
         self.publisher = self.create_publisher(Twist, '/cmd_vel', 1)
-        self.subscription = self.create_subscription(Empty, "robot_start",
-               self.listener_callback, 10)
-        self.subscription = self.create_subscription(Image, "/color/image_projected_compensated",
-               self.image_callback, 1)       
-        self.timer_period = 0.5 
-        self.error = [0,0]
-        self.timer = self.create_timer(self.timer_period, self.timer_callback)
-        self.prevpt1 = [100,100]
-        self.prevpt2 = [700,100]
-        self.curr_time = 0
+        self.sign_printer = self.create_publisher(String, '/signes', 1)
 
-    def timer_callback(self):
-        self.curr_time += self.timer_period
-        cmd_vel = Twist()
-        cmd_vel.linear.x = 0.1
-        cmd_vel.angular.z = float( \
-                      0.018* self.error[-1] + \
-                      0.0000 * np.sum(np.array(self.error)*self.timer_period) + \
-                      0.017* (self.error[-1] - self.error[-2]) / self.timer_period )
-        #self.get_logger().info(f'{cmd_vel.angular.z}')
-        self.publisher.publish(cmd_vel)
+        self.subscription = self.create_subscription(String, "robot_stop", self.empty_listener_callback, 1)
 
-  
-    def listener_callback(self, msg):
-        twist = Twist()
-        twist.linear.x = 0.05    
-        self.publisher.publish(twist)
+        self.starter = self.create_subscription(Image, "/color/image", self.traffic_light_callback, 1)
+        self.recognizer = self.create_subscription(Image, "/color/image", self.recognizer_callback, 1)
+        self.depth = self.create_subscription(Image, "/depth/image", self.depth_callback, 1)
+        self.pose_subscriber = self.create_subscription(LaserScan, '/scan', self.update_pose, 10)
+        self.scan = LaserScan()
+        self.is_started = 0
         
-    def image_callback(self, msg):
+        self.detector = cv.SIFT_create()
+    
+    def empty_listener_callback(self, msg):        
+        if msg.data=='start':
+            self.is_started = 1        
+        if msg.data=='stop':
+            self.is_started = 0
+    
+    def update_pose(self, ranges):
+        self.scan = ranges    	
+    
+    
+    def recognizer_callback(self, msg):
+        if not self.is_started: 
+            return 
         cv_bridge = CvBridge()
-        gray = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        b1 = 232
-        g1 = 0
-        r1 = 0
-        b2 = 255
-        g2 = 255
-        r2 = 255
-        h_min = (g1, b1, r1)
-        h_max = (g2, b2, r2)
-
-        gray = cv2.inRange(gray, h_min, h_max)
-        
-        dst = gray[int(gray.shape[0]/3*2):, :]
-        
-        cv2.imshow("dst", dst)
-        cv2.waitKey(1)
-        
-        dst = np.array(dst, dtype=np.int8)
-        
-        cnt, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
-
-        if cnt > 1:
-            mindistance1 = []
-            mindistance2 = []
-            for i in range(1, cnt):
-                p = centroids[i]
-                ptdistance = [abs(p[0] - self.prevpt1[0]), abs(p[0] - self.prevpt2[0])]
-                mindistance1.append(ptdistance[0])
-                mindistance2.append(ptdistance[1])
-
-            threshdistance = [min(mindistance1), min(mindistance2)]
-            minlb = [mindistance1.index(min(mindistance1)), mindistance2.index(min(mindistance2))]
-            cpt = [centroids[minlb[0] + 1], centroids[minlb[1] + 1]]
-
-            if threshdistance[0] > 50:
-                cpt[0] = self.prevpt1
-            if threshdistance[1] > 50:
-                cpt[1] = self.prevpt2
-                
+        global timer
+        global depth_image
+        img1 = cv.imread('mini.png', 0)
+        img2 = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        kp1, des1 = self.detector.detectAndCompute(img1,None)
+        FLANN_INDEX_KDTREE = 1
+        index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+        search_params = dict(checks = 20)
+        flann = cv.FlannBasedMatcher(index_params, search_params)
+        m = mat(des2)
+        good = g(m)
+        #matchesMask = ()
+        matchesMask = assay(good, matchesMask, img2)  # none - right, else - left
+        if matchesMask:
+            msg = String()
+            msg.data = 'traffic_left'
+            self.sign_printer.publish(msg)
         else:
-            cpt = [self.prevpt1, self.prevpt2]
-
-        self.prevpt1 = cpt[0]
-        self.prevpt2 = cpt[1]
-
-        fpt = [(cpt[0][0] + cpt[1][0]) / 2, (cpt[0][1] + cpt[1][1]) / 2 + gray.shape[0] / 3 * 2]
-
-        self.error.append(dst.shape[1] / 2 - fpt[0])
-
+            msg = String()
+            msg.data = 'traffic_right'
+            self.sign_printer.publish(msg)
+    def depth_callback(self, msg):
+        global depth_image
+        cv_bridge = CvBridge()
+        depth_image = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='32FC1')
         
-        
+
+    
+    def traffic_light_callback(self, msg):
+        cv_bridge = CvBridge()
+        frame = cv_bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+        if not self.is_started:
+            if frame[300, 600][1]==109: self.is_started = 1
+      
+      
 def main(args=None):
     rclpy.init(args=args)
-
-    circling = CirclePublisher()
-
-    rclpy.spin(circling)
-
-    #circling.destroy_node()
+    recognsing= Recognition()
+    rclpy.spin(recognsing)
     rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    main()

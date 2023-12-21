@@ -5,7 +5,7 @@ import os
 import os.path 
 import sys
 from ament_index_python.packages import get_package_share_directory
-dec = cv2.SIFT_create()
+dec = cv2.ORB_create()
 
 bf = cv2.BFMatcher()
 
@@ -52,7 +52,7 @@ def createDesc(images):
 
 descList, keypointList = createDesc(images)
 
-def checkMatch(img_keypoint, img_descriptor, descList, keypointList):
+def checkMatch(img_keypoint, img_descriptor, descList, keypointList, point_limit, distant):
     matchListLen = []
     matchList = []
     classIndices = []  # List to keep track of class indices
@@ -64,14 +64,29 @@ def checkMatch(img_keypoint, img_descriptor, descList, keypointList):
             goods = []
             coordinates = []
             for m, n in matches:
-                if m.distance < 0.7 * n.distance and m.queryIdx < len(img_keypoint):
+                if m.distance < 0.70 * n.distance and m.queryIdx < len(img_keypoint):
                     goodMatches.append([m])
                     goods.append([m, n])
-                    coordinates.append(img_keypoint[m.queryIdx].pt)            
-                matchListLen.append(len(goodMatches))
-                matchList.append(goodMatches)
-                global_coor.append(coordinates)
-                classIndices.append(i)
+                    coordinates.append(img_keypoint[m.queryIdx].pt)
+            if(len(goodMatches) >= point_limit):
+                while(len(goodMatches) >= 1):
+                    centrlenght = []
+                    res_centrlenght = []
+                    for j in range(len(goodMatches)):
+                        new_coordinates = coordinates[:j] + coordinates[j+1:]
+                        centroid = np.mean(new_coordinates, axis=0)
+                        centrlenght.append([np.linalg.norm(np.array(img_keypoint[m[0].queryIdx].pt) - centroid) for m in goodMatches])
+                    res_centrlenght = [np.mean(column) for column in zip(*centrlenght)]
+                    if(max(res_centrlenght) > distant):
+                        goodMatches.pop(res_centrlenght.index(max(res_centrlenght)))
+                        goods.pop(res_centrlenght.index(max(res_centrlenght)))
+                        coordinates.pop(res_centrlenght.index(max(res_centrlenght)))
+                    else:
+                        break             
+            matchListLen.append(len(goodMatches))
+            matchList.append(goodMatches)
+            global_coor.append(coordinates)
+            classIndices.append(i)
     return matchList, matchListLen, global_coor, classIndices  # Return classIndices
     
 
@@ -107,7 +122,7 @@ def detectTrafficSigns(img, threshold):
     currentImage = np.copy(img)
     gray_image = cv2.cvtColor(currentImage, cv2.COLOR_BGR2GRAY)
     img_keypoint, img_descriptor = dec.detectAndCompute(gray_image, None)
-    matchRaw, matchLen, coordinates, classIndices = checkMatch(img_keypoint, img_descriptor, descList, keypointList)
+    matchRaw, matchLen, coordinates, classIndices = checkMatch(img_keypoint, img_descriptor, descList, keypointList, threshold + 5, 50)
     classID, matchesMask, currentImage, maxMatchIndex = getClass(gray_image, images, matchRaw, matchLen, classIndices, img_keypoint, keypointList, threshold)
     findedClass = 'none'
     if (classID != -1):
@@ -133,5 +148,5 @@ def detectTrafficSigns(img, threshold):
 def recognition(img, depth_image):
     #mask = depth_image > 128
     #img[mask] = [0, 0, 0]
-    cur_img, findedClass = detectTrafficSigns(img, 18)
+    cur_img, findedClass = detectTrafficSigns(img, 10)
     return  cur_img, findedClass, classNames
