@@ -5,7 +5,7 @@ import os
 import os.path 
 import sys
 from ament_index_python.packages import get_package_share_directory
-dec = cv2.ORB_create()
+dec = cv2.SIFT_create()
 
 bf = cv2.BFMatcher()
 
@@ -64,7 +64,7 @@ def checkMatch(img_keypoint, img_descriptor, descList, keypointList, point_limit
             goods = []
             coordinates = []
             for m, n in matches:
-                if m.distance < 0.70 * n.distance and m.queryIdx < len(img_keypoint):
+                if m.distance < 0.53 * n.distance and m.queryIdx < len(img_keypoint):
                     goodMatches.append([m])
                     goods.append([m, n])
                     coordinates.append(img_keypoint[m.queryIdx].pt)
@@ -122,7 +122,7 @@ def detectTrafficSigns(img, threshold):
     currentImage = np.copy(img)
     gray_image = cv2.cvtColor(currentImage, cv2.COLOR_BGR2GRAY)
     img_keypoint, img_descriptor = dec.detectAndCompute(gray_image, None)
-    matchRaw, matchLen, coordinates, classIndices = checkMatch(img_keypoint, img_descriptor, descList, keypointList, threshold + 5, 50)
+    matchRaw, matchLen, coordinates, classIndices = checkMatch(img_keypoint, img_descriptor, descList, keypointList, threshold + 5, 30)
     classID, matchesMask, currentImage, maxMatchIndex = getClass(gray_image, images, matchRaw, matchLen, classIndices, img_keypoint, keypointList, threshold)
     findedClass = 'none'
     if (classID != -1):
